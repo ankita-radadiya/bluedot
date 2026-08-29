@@ -494,6 +494,7 @@ header nav .nav-tools .nav-static-links a:hover {
 
 header nav .nav-tools button.nav-cart-button {
   background-image: url('../../icons/cart.svg');
+  background-size: 36px;
   background-repeat: no-repeat;
   background-position: center;
   position: relative;
