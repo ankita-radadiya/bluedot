@@ -1,5 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-icon-_rq">
-    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-    <line x1="3" y1="6" x2="21" y2="6"></line>
-    <path d="M16 10a4 4 0 0 1-8 0"></path>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#005929" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Bag Outline -->
+  <polygon points="6 4.5 18 4.5 20.2 20 3.8 20" />
+  
+  <!-- Handle Curve -->
+  <path d="M 9 9 C 9 13.5, 15 13.5, 15 9" />
+  
+  <!-- Handle Eyelets -->
+  <circle cx="9" cy="9" r="1.1" fill="#005929" stroke="none" />
+  <circle cx="15" cy="9" r="1.1" fill="#005929" stroke="none" />
 </svg>
