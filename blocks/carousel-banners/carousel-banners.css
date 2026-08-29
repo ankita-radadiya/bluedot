@@ -1,0 +1,80 @@
+/* Reuse the existing carousel's slide/indicator/nav styles so both blocks
+   stay visually consistent and you don't maintain the same rules twice. */
+@import url('../carousel/carousel.css');
+
+main > .section .carousel-banners-wrapper {
+  max-width: unset;
+  padding: 0;
+}
+
+.carousel-banners .carousel-banners-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-small);
+}
+
+/* ---- left: carousel column ---- */
+.carousel-banners .carousel-banners-carousel-col {
+  position: relative;
+}
+
+.carousel-banners .carousel-banners-carousel-col .carousel-slides {
+  height: 60vw;
+}
+
+/* ---- right: banners column ---- */
+.carousel-banners .carousel-banners-banners-col {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-small);
+}
+
+.carousel-banners .carousel-banner {
+  position: relative;
+  overflow: hidden;
+  min-height: 140px;
+  border-radius: var(--shape-border-radius-2);
+}
+
+.carousel-banners .carousel-banner picture {
+  position: absolute;
+  inset: 0;
+}
+
+.carousel-banners .carousel-banner picture > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.carousel-banners .carousel-banner:hover picture > img {
+  transform: scale(1.04);
+}
+
+/* if a banner's image is wrapped in a link, make the whole tile clickable */
+.carousel-banners .carousel-banner a {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+@media (min-width: 900px) {
+  .carousel-banners .carousel-banners-grid {
+    grid-template-columns: 2.2fr 1fr;
+    align-items: stretch;
+  }
+
+  .carousel-banners .carousel-banners-carousel-col .carousel-slides {
+    height: 100%;
+    min-height: 420px;
+  }
+
+  .carousel-banners .carousel-banners-banners-col {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 1fr);
+  }
+}

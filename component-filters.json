@@ -60,6 +60,12 @@
     ]
   },
   {
+    "id": "carousel-banners",
+    "components": [
+      "carousel-banner"
+    ]
+  },
+  {
     "id": "carousel",
     "components": [
       "carousel-item"

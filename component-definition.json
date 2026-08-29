@@ -571,6 +571,43 @@
               "type": "key-value-block"
             }
           }
+        },
+        {
+          "title": "Carousel Banners",
+          "id": "carousel-banners",
+          "model": "carousel-banners",
+          "filter": "carousel-banners",
+          "plugins": {
+            "da": {
+              "rows": 1,
+              "columns": 2
+            }
+          }
+        },
+        {
+          "title": "Carousel Banner",
+          "id": "carousel-banner",
+          "model": "carousel-banner",
+          "plugins": {
+            "da": {
+              "rows": 1,
+              "columns": 2,
+              "fields": [
+                {
+                  "name": "image",
+                  "selector": "div:nth-child(1)>picture>img[src]"
+                },
+                {
+                  "name": "imageAlt",
+                  "selector": "div:nth-child(1)>picture>img[alt]"
+                },
+                {
+                  "name": "text",
+                  "selector": "div:nth-child(2)"
+                }
+              ]
+            }
+          }
         }
       ]
     },
