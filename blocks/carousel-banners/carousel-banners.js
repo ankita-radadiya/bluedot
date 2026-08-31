@@ -135,6 +135,7 @@ let blockId = 0;
 export default async function decorate(block) {
   blockId += 1;
   block.setAttribute('id', `carousel-banners-${blockId}`);
+  block.classList.add('carousel');
 
   const rows = Array.from(block.querySelectorAll(':scope > div'));
   if (!rows.length) return;

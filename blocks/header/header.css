@@ -189,6 +189,7 @@ header nav .nav-brand img {
     background: #000;
     display: flex;
     align-items: center;
+    justify-content: center;
     position: relative;
     z-index: 100;
 }
