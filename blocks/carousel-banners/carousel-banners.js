@@ -2,12 +2,15 @@ import { fetchPlaceholders } from '../../scripts/commerce.js';
 
 /*
  * Authoring convention for this block:
- * - Every row EXCEPT THE LAST is one carousel slide, authored exactly like the
- *   original `carousel` block: column 1 = image, column 2 = content.
- * - The LAST row is the banners row. Each column in that row is one banner
- *   (an image, optionally wrapped in a link). Author 4 columns to match the
- *   4-image layout, but any number works — CSS lays them out in a stack.
+ * - Every row EXCEPT THE LAST `BANNER_ROW_COUNT` rows is one carousel slide,
+ *   authored exactly like the original `carousel` block: column 1 = image,
+ *   column 2 = content.
+ * - The LAST `BANNER_ROW_COUNT` rows are banner rows. Every column across
+ *   all of those rows is flattened into one banner (an image, optionally
+ *   wrapped in a link). E.g. with BANNER_ROW_COUNT = 2 and 2 columns per
+ *   row, author 2 rows x 2 columns = 4 banners total.
  */
+const BANNER_ROW_COUNT = 2;
 
 function updateActiveSlide(slide) {
   const block = slide.closest('.carousel-banners');
@@ -115,16 +118,20 @@ function createSlide(row, slideIndex, blockId) {
   return slide;
 }
 
-function buildBanners(row) {
+function buildBanners(bannerRows) {
   const banners = document.createElement('ul');
   banners.classList.add('carousel-banners-list');
 
-  row.querySelectorAll(':scope > div').forEach((cell, idx) => {
-    const item = document.createElement('li');
-    item.classList.add('carousel-banner');
-    item.dataset.bannerIndex = idx;
-    item.append(...cell.childNodes);
-    banners.append(item);
+  let idx = 0;
+  bannerRows.forEach((row) => {
+    row.querySelectorAll(':scope > div').forEach((cell) => {
+      const item = document.createElement('li');
+      item.classList.add('carousel-banner');
+      item.dataset.bannerIndex = idx;
+      item.append(...cell.childNodes);
+      banners.append(item);
+      idx += 1;
+    });
   });
 
   return banners;
@@ -135,13 +142,13 @@ let blockId = 0;
 export default async function decorate(block) {
   blockId += 1;
   block.setAttribute('id', `carousel-banners-${blockId}`);
-  block.classList.add('carousel');
+  block.classList.add('carousel'); // so imported carousel.css rules match
 
   const rows = Array.from(block.querySelectorAll(':scope > div'));
   if (!rows.length) return;
 
-  // last authored row = banners, everything before it = carousel slides
-  const bannersRow = rows.pop();
+  // last BANNER_ROW_COUNT authored rows = banners, everything before = slides
+  const bannerRows = rows.splice(-BANNER_ROW_COUNT, BANNER_ROW_COUNT);
   const slideRows = rows;
   const isSingleSlide = slideRows.length < 2;
 
@@ -197,9 +204,9 @@ export default async function decorate(block) {
   });
 
   // ---- right: stacked banners column ----
-  const bannersCol = buildBanners(bannersRow);
+  const bannersCol = buildBanners(bannerRows);
   bannersCol.classList.add('carousel-banners-banners-col');
-  bannersRow.remove();
+  bannerRows.forEach((row) => row.remove());
 
   grid.append(carouselCol, bannersCol);
   block.textContent = '';
