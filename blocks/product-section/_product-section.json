@@ -1,0 +1,138 @@
+{
+  "definitions": [
+    {
+      "title": "Product Section",
+      "id": "product-section",
+      "model": "product-section",
+      "filter": "product-section",
+      "plugins": {
+        "da": {
+          "name": "product-section",
+          "rows": 1,
+          "columns": 2
+        }
+      }
+    }
+  ],
+  "models": [
+    {
+      "id": "product-section",
+      "fields": [
+        {
+          "component": "text",
+          "name": "displaytype",
+          "value": "grid",
+          "label": "Display Type",
+          "description": "Choose between grid or carousel layout",
+          "valueType": "string",
+          "required": false,
+          "enum": [
+            {
+              "name": "Grid",
+              "value": "grid"
+            },
+            {
+              "name": "Carousel",
+              "value": "carousel"
+            }
+          ]
+        },
+        {
+          "component": "text",
+          "name": "pagesize",
+          "value": "6",
+          "label": "Page Size",
+          "description": "Number of products to display (default: 6)",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "component": "text",
+          "name": "productskus",
+          "value": "",
+          "label": "Product SKUs",
+          "description": "Comma-separated list of product SKUs (e.g., sku1,sku2,sku3). Leave empty to use category.",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "component": "text",
+          "name": "recommendationtype",
+          "value": "viewed",
+          "label": "Recommendation Type",
+          "description": "Type of recommendation algorithm",
+          "valueType": "string",
+          "required": false,
+          "enum": [
+            {
+              "name": "Viewed",
+              "value": "viewed"
+            },
+            {
+              "name": "Bought Together",
+              "value": "bought-together"
+            },
+            {
+              "name": "Trending",
+              "value": "trending"
+            },
+            {
+              "name": "Recently Viewed",
+              "value": "recently-viewed"
+            }
+          ]
+        },
+        {
+          "component": "text",
+          "name": "categorypath",
+          "value": "",
+          "label": "Category Path",
+          "description": "Category path for filtering products (e.g., /women/shoes). Leave empty to show all products.",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "component": "text",
+          "name": "sortby",
+          "value": "",
+          "label": "Sort By",
+          "description": "Sort order for products",
+          "valueType": "string",
+          "required": false,
+          "enum": [
+            {
+              "name": "Name (A-Z)",
+              "value": "name"
+            },
+            {
+              "name": "Price (Low to High)",
+              "value": "price-asc"
+            },
+            {
+              "name": "Price (High to Low)",
+              "value": "price-desc"
+            },
+            {
+              "name": "Relevance",
+              "value": "relevance"
+            },
+            {
+              "name": "Newest",
+              "value": "newest"
+            },
+            {
+              "name": "Best Sellers",
+              "value": "bestsellers"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "id": "product-section",
+      "components": []
+    }
+  ]
+}

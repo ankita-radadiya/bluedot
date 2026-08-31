@@ -885,3 +885,57 @@ export function decorateSections(main) {
     section.style.display = 'none';
   });
 }
+
+export async function fetchProducts({ categoryId = '2', pageSize = 8 } = {}) {
+  const query = `
+    query getProducts($categoryId: String!, $pageSize: Int!) {
+      products(filter: { category_id: { eq: $categoryId } }, pageSize: $pageSize) {
+        items {
+          name
+          url_key
+          small_image {
+            url
+          }
+          price_range {
+            minimum_price {
+              final_price {
+                value
+                currency
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  // Ensure this resolves to your full Adobe Commerce or API Mesh GraphQL endpoint
+  const endpoint = new URL(getConfigValue('commerce-endpoint'));
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Store: window.storefrontConfig?.['commerce-store-code'] || 'default',
+      },
+      body: JSON.stringify({
+        query,
+        variables: { categoryId: String(categoryId), pageSize },
+      }),
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      console.error(`GraphQL Request failed [${response.status}]:`, responseText);
+      return [];
+    }
+
+    const json = JSON.parse(responseText);
+    return json?.data?.products?.items || [];
+  } catch (error) {
+    console.error('Error fetching products for slider:', error);
+    return [];
+  }
+}

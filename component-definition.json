@@ -644,6 +644,19 @@
               "type": "key-value-block"
             }
           }
+        },
+        {
+          "title": "Product Section",
+          "id": "product-section",
+          "model": "product-section",
+          "filter": "product-section",
+          "plugins": {
+            "da": {
+              "name": "product-section",
+              "rows": 1,
+              "columns": 2
+            }
+          }
         }
       ]
     }

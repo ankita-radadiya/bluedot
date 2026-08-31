@@ -246,6 +246,13 @@ async function loadLazy(doc) {
 
   loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   loadFonts();
+
+  if (window.location.pathname === '/') {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/styles/home.css';
+    document.head.appendChild(link);
+  }
 }
 
 /**
