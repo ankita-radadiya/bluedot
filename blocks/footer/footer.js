@@ -182,5 +182,29 @@ export default async function decorate(block) {
     footer.append(footerContent);
   }
 
+  // Scroll to top button
+  const scrollTopBtn = document.createElement('button');
+  scrollTopBtn.type = 'button';
+  scrollTopBtn.className = 'scroll-to-top';
+  scrollTopBtn.setAttribute('aria-label', 'Scroll to top');
+  scrollTopBtn.innerHTML = '&#8593;';
+
+  scrollTopBtn.addEventListener('click', () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  });
+
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+      scrollTopBtn.classList.add('visible');
+    } else {
+      scrollTopBtn.classList.remove('visible');
+    }
+  });
+
+  footer.append(scrollTopBtn);
+
   block.append(footer);
 }
