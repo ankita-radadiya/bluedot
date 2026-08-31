@@ -3,7 +3,6 @@ import { blendNavigationTrees } from './menuBuilder.js';
 import { renderDesktopMenu } from './renderers/desktopRenderer.js';
 import { renderMobileMenu } from './renderers/mobileRenderer.js';
 import { initializeNavigationEvents } from './navigationEvents.js';
-import renderAuthCombine from '../header/renderAuthCombine.js';
 
 /**
  * Native AEM Navbar Block Entry Point.
@@ -39,19 +38,6 @@ export default async function decorate(block) {
     block.appendChild(mobileContainer);
 
     initializeNavigationEvents(block);
-
-    // Dynamic Auth Injection Hook
-    const globalNavElement = document.getElementById('nav');
-    const isDesktopView = window.matchMedia('(min-width: 900px)');
-
-    renderAuthCombine(block, () => {
-      if (!isDesktopView.matches && globalNavElement) {
-        globalNavElement.setAttribute('aria-expanded', 'false');
-        document.body.style.overflowY = '';
-        document.querySelector('.nav-wrapper')?.classList.remove('active');
-        document.querySelector('.overlay')?.classList.remove('show');
-      }
-    });
   } catch (error) {
     console.error('Critical failure establishing custom modular navbar block:', error);
   }
