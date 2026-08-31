@@ -1,73 +1,135 @@
-footer {
-    background-color: var(--color-neutral-100);
-    font: var(--type-body-2-default-font);
-    letter-spacing: var(--type-body-2-default-letter-spacing);
-}
 
 footer .footer > div {
-    margin: auto;
-    max-width: 1200px;
-    padding: 40px 24px 24px;
+   display: flex;
+   flex-direction: column;
 }
 
 footer .footer p {
     margin: 0;
 }
 
-.storeview-switcher-button {
-    background: transparent;
-    padding-left: 0;
+footer .footer-content {
+    order: 2;
 }
 
-.storeview-modal-storeview-title {
-    margin-bottom: var(--spacing-xxbig);
-    padding-inline-start: var(--spacing-xbig);
-}
-
-.modal .close-button {
-    top: 40px !important;
-    right: 40px !important;
-}
-
-.storeview-single-store {
-    list-style-type: none;
-}
-
-.storeview-selection .storeview-multiple-stores {
-    list-style-image: url("../../icons/chevron-right.svg");
-    list-style-position: inside;
-}
-
-.storeview-selection > li {
-    margin-bottom: var(--spacing-small);
-}
-
-.storeview-multiple-stores > ul {
-    position: relative;
-    width: 100%;
-}
-
-.storeview-multiple-stores > ul > li {
-    list-style: none;
-    display: none;
-}
-
-.storeview-multiple-stores[aria-expanded="true"] {
-    list-style-image: url("../../icons/chevron-down.svg");
-}
-
-.storeview-multiple-stores[aria-expanded="true"] > ul {
-    padding-left: 0;
-}
-
-.storeview-multiple-stores[aria-expanded="true"] > ul > li {
+.copyright {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    background: #f7f7f7;
+    color: #4E4D46;
     display: block;
-    list-style-type: none;
-    margin-bottom: var(--spacing-small);
+    line-height: 1.4rem;
+    padding: 20px 25px;
+    text-align: center;
+    order: 3;
 }
 
-@media (min-width: 900px) {
-    footer .footer > div {
-        padding: 40px 32px 24px;
+.amtheme-footer-cms .cards-wrapper ul {
+    display: block;
+}
+
+.footer-content .footer-links .default-content-wrapper ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.footer-content .footer-links .default-content-wrapper ul:not(:last-child) {
+    margin: 0 0 20px;
+}
+
+.footer-content .amtheme-footer-cms a {
+    color: #285227;
+    text-decoration: none;
+    font-weight: 700;
+    transition: color .4s ease-in-out;
+}
+
+.footer-content .amtheme-footer-cms a:hover {
+    color: #3e7f3c;
+    text-decoration: none;
+}
+
+.amtheme-footer-cms .cards-wrapper ul li {
+    border: 0;
+}
+
+.footer-content .footer-links .default-content-wrapper ul li,
+.footer-content .footer-links .default-content-wrapper ul li a {
+    margin: 0 0 15px;
+    color: #000;
+    transition: all ease-in-out .4s;
+    font-weight: 700;
+}
+
+.footer-content .footer-links .default-content-wrapper ul li:hover,
+.footer-content .footer-links .default-content-wrapper ul li a:hover {
+    color: #3e7f3c;
+    text-decoration: none;
+}
+
+.footer-content .amtheme-footer-cms {
+    font-weight: 400;
+    line-height: 1.25;
+    font-size: 1.6rem;
+    color: #000;
+}
+
+.amtheme-footer-cms .cards-wrapper {
+    margin: 0 0 20px;
+}
+
+.amtheme-footer-cms .cards-wrapper .cards-card-image {
+    display: inline-block;
+     width: 29%;
+}
+
+.amtheme-footer-cms .cards-wrapper .cards-card-image img {
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: auto;
+    width: auto;
+    object-fit: none;
+}
+
+.amtheme-footer-cms .cards-wrapper .cards-card-body {
+    display: inline-block;
+    width: 69%;
+    vertical-align: top;
+    margin: 0;
+}
+
+
+@media only screen and (min-width: 768px) {
+    footer .footer-content {
+        align-items: flex-start;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: space-between;
+        margin: 0 auto;
+        max-width: 1440px;
+        padding: 50px 30px 45px;
+        width: auto;
+    }
+
+    .footer-content [data-section-row="footer-column"] {
+        flex-basis: 33%;
+        max-width: 33%;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .footer-content .footer-links .default-content-wrapper ul {
+        column-count: 2;
+        column-gap: 60px;
+    }
+}
+
+@media only screen and (min-width: 1440px) {
+    footer .footer-content {
+        padding-inline: calc(30px * 2);
     }
 }

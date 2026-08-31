@@ -166,7 +166,21 @@ export default async function decorate(block) {
       })($storeSwitcherBtn);
     }
   }
-  while (fragment.firstElementChild) footer.append(fragment.firstElementChild);
+  const footerContent = document.createElement('div');
+  footerContent.classList.add('footer-content');
+
+  while (fragment.firstElementChild) {
+    const child = fragment.firstElementChild;
+    if (child.dataset.container === 'footer-content') {
+      footerContent.append(child);
+    } else {
+      footer.append(child);
+    }
+  }
+
+  if (footerContent.hasChildNodes()) {
+    footer.append(footerContent);
+  }
 
   block.append(footer);
 }
