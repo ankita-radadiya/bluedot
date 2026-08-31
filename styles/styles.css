@@ -127,7 +127,9 @@
   /* Additional tokens */
   --type-fixed-font-family: adobe-clean, "Roboto Mono", menlo, consolas, "Liberation Mono", monospace, system-ui, sans-serif;
   --background-color: var(--color-neutral-50);
-  --nav-height: 6.4rem;
+  --nav-height: 7.2rem;
+  --container-width: 1320px;
+  --container-spacing-desktop: 20px;
 }
 
 /* fallback font */
@@ -162,9 +164,13 @@ body:not(.appear) {
   display: none;
 }
 
-header {
-  grid-row: 1;
-  height: var(--nav-height);
+html main .container {
+	width: 100%;
+	max-width: var(--container-width);
+	padding-left: var(--container-spacing-desktop);
+	padding-right: var(--container-spacing-desktop);
+	margin-left: auto;
+	margin-right: auto;
 }
 
 main {
