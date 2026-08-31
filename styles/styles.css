@@ -472,9 +472,9 @@ main > .section {
 }
 
 main > .section > div {
-  max-width: 1200px;
+  max-width: var(--container-width);
   margin: auto;
-  padding: 0 var(--spacing-medium);
+  padding: 0 var(--container-spacing-desktop);
 }
 
 main > .section:first-of-type {
