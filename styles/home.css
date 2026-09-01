@@ -46,6 +46,12 @@
     margin: 0;
 }
 
+.category-tabs h2 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
 .bca-services > div > div > p:first-child,
 .bca-services > div > div > picture:first-child {
     margin: 0;

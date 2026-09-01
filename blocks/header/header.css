@@ -483,6 +483,9 @@ header nav .nav-tools .nav-static-links {
 }
 
 
+header .nav-search-panel .search-bar-result a:hover {
+  text-decoration: none;
+}
 
 header nav .nav-tools .nav-static-links a:hover {
   text-decoration: underline;
@@ -581,18 +584,36 @@ header .nav-search-panel .dropin-input-container {
 }
 
 header .nav-search-panel .search-bar-result {
-  width: 100%;
-  position: relative;
+    width: 100%;
+    position: absolute;
+    top: 100%;
+    background: #fff;
+    z-index: 99;
+    box-shadow: rgb(202 202 202) 0 0 6px 0;
 }
 
 header .nav-search-panel .search-bar-result .product-discovery-product-list__grid {
   margin-block: var(--spacing-small);
+  padding: 2rem;
+  text-align: left;
 }
+
+header .nav-search-panel .search-bar-result .dropin-button {
+    background-color: rgb(244 244 244);
+    border-radius: 0;
+    border: 0;
+}
+
+
 
 /* Popover List */
 header .nav-search-panel .search-bar-result .dropin-product-item-card {
   display: grid;
   grid-template-columns: 60px 1fr;
+}
+
+header .nav-search-panel .search-bar-result .dropin-product-item-card__content {
+  padding-top: 0;
 }
 
 /* Product Item Skeleton */

@@ -306,4 +306,5 @@ div[data-slot="ItemRemoveAction"] {
 
 .cart-mini-cart__footer__ctas [data-testid="route-cart-button"]:hover {
   background-color: #00441d;
+  color: #fff;
 }
