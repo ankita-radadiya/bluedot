@@ -63,7 +63,8 @@ export default async function decorate(block) {
       const miniPDPContent = await createMiniPDP(
         cartItem,
         async () => {
-          const productName = cartItem.name || cartItem.product?.name || placeholders?.Global?.CartUpdatedProductName;
+          const productName = cartItem.name || cartItem.product?.name
+           || placeholders?.Global?.CartUpdatedProductName;
           const message = placeholders?.Global?.CartUpdatedProductMessage?.replace('{product}', productName);
 
           const cartNotification = document.querySelector('.cart__notification');
@@ -160,7 +161,9 @@ export default async function decorate(block) {
           minusBtn.onclick = async (e) => {
             e.preventDefault();
             if (item.quantity > 1 && cartApi.updateProductsFromCart) {
-              await cartApi.updateProductsFromCart([{ uid: item.uid, quantity: item.quantity - 1 }]);
+              await cartApi.updateProductsFromCart([{
+                uid: item.uid, quantity: item.quantity - 1,
+              }]);
             }
           };
 
@@ -176,7 +179,9 @@ export default async function decorate(block) {
           plusBtn.onclick = async (e) => {
             e.preventDefault();
             if (cartApi.updateProductsFromCart) {
-              await cartApi.updateProductsFromCart([{ uid: item.uid, quantity: item.quantity + 1 }]);
+              await cartApi.updateProductsFromCart([{
+                uid: item.uid, quantity: item.quantity + 1,
+              }]);
             }
           };
 

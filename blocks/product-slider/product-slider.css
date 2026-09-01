@@ -67,9 +67,11 @@
   text-decoration: none;
   color: inherit;
 }
+
 .product-slider-card:hover .product-slider-link {
   text-decoration: none;
 }
+
 .product-slider-image {
   margin: 16px 16px 0;
   padding: 12px;
@@ -206,10 +208,12 @@
   box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+
 .product-slider-arrow:focus,
 .product-slider-arrow:active {
   border: 1px solid #000;
 }
+
 .product-slider-arrow svg {
   width: 26px;
   height: 26px;

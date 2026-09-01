@@ -119,6 +119,7 @@ main > .section .carousel-wrapper {
     background-color: #000;
     
 }
+
 .carousel .carousel-slide-indicator button:disabled {
     width: 24px;
 }

@@ -1,17 +1,10 @@
-.category-columns .columns > div {
-    gap: 2px;
-}
 
-.category-columns .columns p {
-    margin: 0;
-}
-
-.category-columns .columns .columns-img-col img {
-    transition: all .3s ease-in-out;
-}
-
-.category-columns .columns .columns-img-col:hover img {
-    transform: scale(1.1);
+.bca-services > div > div {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
 .bca-acp .columns > div {
@@ -20,29 +13,151 @@
     font-size: 1.4rem;
     line-height: 1.8rem;
 }
+
+.category-columns .columns > div {
+    gap: 2px;
+}
+
+.category-columns .columns p {
+    margin: 0;
+}
+
 .bca-acp .columns .columns-img-col {
     flex: 2;
 }
+
+.bca-services > div > div picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 .bca-acp .columns img {
     border-radius: 6px;
 }
+
+.product-lines .columns p {
+    margin: 0;
+}
+
+.bca-acp .columns p,
+.bca-acp .columns h3 {
+    margin: 0;
+}
+
+.bca-services > div > div > p:first-child,
+.bca-services > div > div > picture:first-child {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.bca-services .columns-img-col a {
+    text-decoration: none;
+    background: #285227;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Chivo, Arial, sans-serif;
+    font-weight: 400;
+    box-sizing: border-box;
+    vertical-align: middle;
+    line-height: 2rem;
+    padding: 18px 35px;
+    font-size: 1.8rem;
+    border-radius: 4px;
+    box-shadow: none;
+    width: max-content;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    margin: 0;
+    max-width: 80%;
+    height: auto;
+}
+
+.category-tabs .tabs-panel-description a {
+    text-decoration: none;
+    background: #285227;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    display: inline-block;
+    font-family: Chivo, Arial, sans-serif;
+    font-weight: 400;
+    margin: 10px 10px 0 0;
+    box-sizing: border-box;
+    vertical-align: middle;
+    line-height: 2rem;
+    padding: 18px 35px;
+    font-size: 1.8rem;
+    border-radius: 4px;
+    box-shadow: none;
+}
+
+.bca-services > div > div > p:nth-child(2),
+.bca-services > div > div > picture:nth-child(2) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    margin: 0;
+    max-width: 80%;
+    height: auto;
+}
+
+.category-tabs .tabs-panel-description a:hover,
+.bca-services .columns-img-col a:hover {
+    background: #3e7f3c;
+    border: 0;
+    color: #fff;
+    text-decoration: none;
+}
+
+.product-lines .columns > div,
+.services .columns > div {
+    gap: 1rem;
+    align-items: stretch;
+}
+
+
+
+.product-lines .default-content-wrapper,
+.services .default-content-wrapper {
+    text-align: center;
+}
+
+.product-lines h2,
+.services h2 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.category-tabs .tabs-panel-description p:last-child {
+    width: 480px;
+    margin: 0 auto;
+}
+
+.category-columns .columns .columns-img-col img {
+    transition: all .3s ease-in-out;
+}
+
 .bca-acp .columns > div > div:nth-child(2) {
-    background: rgba(0, 0, 0, 0.9);
+    background: rgb(0 0 0 / 90%);
     color: #fff;
     border-radius: 6px;
     padding-bottom: 1.6rem;
 }
-.bca-acp .columns strong {
-    padding: 0 1.6rem;
-    font-size: 2rem;
-}
-.bca-acp .columns p,
-.bca-acp .columns h3  {
-    margin: 0;
-}
+
 .bca-acp .columns > div > div:nth-child(2) p {
     padding: 0 1.6rem;
 }
+
 .bca-acp .columns > div > div:nth-child(2) p a {
     margin-top: 1.6rem;
     display: inline-block;
@@ -52,101 +167,19 @@
     font-weight: bold;
     text-decoration: none;
     border-radius: 4px;
-    
 }
+
 .bca-acp .columns > div > div:nth-child(2) img {
     height: 296px;
 }
 
-.category-tabs .tabs-panel-description a,
-.bca-services .columns-img-col a  {
-    text-decoration: none;
-    background-image: none;
-    background: #285227;
-    border: 0;
-    color: #fff;
-    cursor: pointer;
-    display: inline-block;
-    font-family: 'Chivo', Arial, sans-serif;
-    font-weight: 400;
-    margin: 10px 10px 0 0;
-    padding: 15px 35px;
-    box-sizing: border-box;
-    vertical-align: middle;
-    line-height: 2rem;
-    padding: 18px 35px;
-    font-size: 1.8rem;
-    border-radius: 4px;
-    box-shadow: none;
-}
-.category-tabs .tabs-panel-description a:hover,
-.bca-services .columns-img-col a:hover  {
-    background: #3e7f3c;
-    border: 0;
-    color: #fff;
-    text-decoration: none;
-}
-.category-tabs .tabs-panel-description p:last-child {
-    width: 480px;
-    margin: 0 auto;
-}
-
-.product-lines .default-content-wrapper,
-.services .default-content-wrapper {
-    text-align: center;
-}
-.product-lines h2,
-.services h2 {
+.bca-acp .columns strong {
+    padding: 0 1.6rem;
     font-size: 2rem;
-    font-weight: 700;
-}
-.product-lines .columns > div,
-.services .columns > div {
-    gap: 1rem;
-    align-items: stretch;
-}
-.product-lines .columns p {
-    margin: 0;
 }
 
-/* Container cell for each column */
-.bca-services > div > div {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
 
-/* Background image (First image/paragraph in cell) */
-.bca-services > div > div > p:first-child,
-.bca-services > div > div > picture:first-child {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-}
 
-.bca-services > div > div picture img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* Overlay image (Second image/paragraph in cell centered above) */
-.bca-services > div > div > p:nth-child(2),
-.bca-services > div > div > picture:nth-child(2),
-.bca-services .columns-img-col a {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2;
-  margin: 0;
-  max-width: 80%; /* Adjust size relative to column background */
-  height: auto;
-}
-
-.bca-services .columns-img-col a {
-    width: max-content;
+.category-columns .columns .columns-img-col:hover img {
+    transform: scale(1.1);
 }
