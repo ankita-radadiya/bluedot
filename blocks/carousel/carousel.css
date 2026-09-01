@@ -63,6 +63,7 @@ main > .section .carousel-wrapper {
 }
 
 .carousel .carousel-slide .carousel-slide-content {
+    display: none;
     z-index: 1;
     margin: 68px;
     padding: var(--spacing-small);
@@ -104,18 +105,22 @@ main > .section .carousel-wrapper {
     height: 8px;
     outline: 0;
     border: 0 none;
-    border-radius: 50%;
+    border-radius: 20px;
     text-decoration: none;
-    background-color: var(--color-neutral-400);
+    background-color: #fff;
     margin: 0;
     padding: 0;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease-in-out;
 }
 
 .carousel .carousel-slide-indicator button:disabled,
 .carousel .carousel-slide-indicator button:hover,
 .carousel .carousel-slide-indicator button:focus-visible {
-    background-color: var(--color-neutral-700);
+    background-color: #000;
+    
+}
+.carousel .carousel-slide-indicator button:disabled {
+    width: 24px;
 }
 
 .carousel .carousel-navigation-buttons {

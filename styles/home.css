@@ -58,7 +58,8 @@
     height: 296px;
 }
 
-.category-tabs .tabs-panel-description a {
+.category-tabs .tabs-panel-description a,
+.bca-services .columns-img-col a  {
     text-decoration: none;
     background-image: none;
     background: #285227;
@@ -68,7 +69,7 @@
     display: inline-block;
     font-family: 'Chivo', Arial, sans-serif;
     font-weight: 400;
-    margin: 0 10px 10px 0;
+    margin: 10px 10px 0 0;
     padding: 15px 35px;
     box-sizing: border-box;
     vertical-align: middle;
@@ -78,7 +79,8 @@
     border-radius: 4px;
     box-shadow: none;
 }
-.category-tabs .tabs-panel-description a:hover {
+.category-tabs .tabs-panel-description a:hover,
+.bca-services .columns-img-col a:hover  {
     background: #3e7f3c;
     border: 0;
     color: #fff;
@@ -87,4 +89,64 @@
 .category-tabs .tabs-panel-description p:last-child {
     width: 480px;
     margin: 0 auto;
+}
+
+.product-lines .default-content-wrapper,
+.services .default-content-wrapper {
+    text-align: center;
+}
+.product-lines h2,
+.services h2 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+.product-lines .columns > div,
+.services .columns > div {
+    gap: 1rem;
+    align-items: stretch;
+}
+.product-lines .columns p {
+    margin: 0;
+}
+
+/* Container cell for each column */
+.bca-services > div > div {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Background image (First image/paragraph in cell) */
+.bca-services > div > div > p:first-child,
+.bca-services > div > div > picture:first-child {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bca-services > div > div picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Overlay image (Second image/paragraph in cell centered above) */
+.bca-services > div > div > p:nth-child(2),
+.bca-services > div > div > picture:nth-child(2),
+.bca-services .columns-img-col a {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  margin: 0;
+  max-width: 80%; /* Adjust size relative to column background */
+  height: auto;
+}
+
+.bca-services .columns-img-col a {
+    width: max-content;
 }

@@ -191,7 +191,7 @@ header nav .nav-brand img {
     align-items: center;
     justify-content: center;
     position: relative;
-    z-index: 100;
+    z-index: 1;
 }
 
 .nav-sections .default-content-wrapper {
@@ -438,6 +438,7 @@ header nav .nav-tools .nav-static-links a {
 header nav .nav-tools-panel {
   z-index: 100;
   background: var(--background-color);
+  border-radius: 4px;
   top: var(--nav-height);
   right: 0;
   width: 100%;
@@ -506,11 +507,11 @@ header nav .nav-tools button.nav-cart-button[data-count]::after {
   position: absolute;
   top: 0;
   right: -2px;
-  background-color: var(--color-brand-700);
+  background-color: #f40606;
   color: var(--color-neutral-100);
   border-radius: 50%;
-  width: 1.75em;
-  height: 1.75em;
+  width: 1.9rem;
+  height: 1.9rem;
   display: flex;
   align-items: center;
   font-size: 0.8em;
@@ -608,6 +609,7 @@ header .nav-search-panel .search-bar-result .product-discovery-product-list__foo
 .cart-mini-cart:not(:has(.cart-empty-cart)) {
   max-height: 760px;
   min-height: 360px;
+  text-align: left;
 }
 
 .cart-mini-cart:has(.cart-empty-cart) {
@@ -641,7 +643,7 @@ header .nav-search-input .search_autocomplete .popover-container {
   }
 
   header nav .nav-tools-panel {
-    top: calc(-12px + var(--nav-height));
+    top: calc(var(--nav-height) - 2.5rem);
   }
 
   header nav .minicart-panel {
