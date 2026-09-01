@@ -20,29 +20,36 @@
     font-size: 1.4rem;
     line-height: 1.8rem;
 }
+
 .bca-acp .columns .columns-img-col {
     flex: 2;
 }
+
 .bca-acp .columns img {
     border-radius: 6px;
 }
+
 .bca-acp .columns > div > div:nth-child(2) {
-    background: rgba(0, 0, 0, 0.9);
+    background: rgb(0 0 0 / 90%);
     color: #fff;
     border-radius: 6px;
     padding-bottom: 1.6rem;
 }
+
 .bca-acp .columns strong {
     padding: 0 1.6rem;
     font-size: 2rem;
 }
+
 .bca-acp .columns p,
 .bca-acp .columns h3  {
     margin: 0;
 }
+
 .bca-acp .columns > div > div:nth-child(2) p {
     padding: 0 1.6rem;
 }
+
 .bca-acp .columns > div > div:nth-child(2) p a {
     margin-top: 1.6rem;
     display: inline-block;
@@ -54,6 +61,7 @@
     border-radius: 4px;
     
 }
+
 .bca-acp .columns > div > div:nth-child(2) img {
     height: 296px;
 }
@@ -66,10 +74,9 @@
     color: #fff;
     cursor: pointer;
     display: inline-block;
-    font-family: 'Chivo', Arial, sans-serif;
+    font-family: Chivo, Arial, sans-serif;
     font-weight: 400;
     margin: 0 10px 10px 0;
-    padding: 15px 35px;
     box-sizing: border-box;
     vertical-align: middle;
     line-height: 2rem;
@@ -78,12 +85,14 @@
     border-radius: 4px;
     box-shadow: none;
 }
+
 .category-tabs .tabs-panel-description a:hover {
     background: #3e7f3c;
     border: 0;
     color: #fff;
     text-decoration: none;
 }
+
 .category-tabs .tabs-panel-description p:last-child {
     width: 480px;
     margin: 0 auto;

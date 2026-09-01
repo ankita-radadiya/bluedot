@@ -302,8 +302,8 @@ function setupSlider(track, prevBtn, nextBtn) {
 export default async function decorate(block) {
   const config = readBlockConfig(block);
 
-  const subtitle = config.subtitle || 'New Trends For The Year';
-  const title = config.title || 'Hot New Discoveries';
+  const { subtitle } = config;
+  const { title } = config;
   const categoryPath = config.categorypath || config['category-path'] || '';
   const pageSize = parseInt(config.pagesize || config['page-size'] || '8', 10);
   const skuConfig = config.productskus || config['product-skus'] || '';

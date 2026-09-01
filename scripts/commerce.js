@@ -60,6 +60,14 @@ export const PRODUCT_TEMPLATE_PATHS = [
   'products/default',
 ];
 
+/**
+ * Category template paths - pages that are templates and should use
+ * default/fake category IDs. Should be relative to root path, ie "/" , "/fr/" , etc.
+ */
+export const CATEGORY_TEMPLATE_PATHS = [
+  'categories/default',
+];
+
 // PATHS
 export const SUPPORT_PATH = '/support';
 export const PRIVACY_POLICY_PATH = '/privacy-policy';
@@ -172,6 +180,10 @@ async function handleCommercePageType(pageType) {
   if (pageType === 'Product') {
     // initialize pdp
     await import('./initializers/pdp.js');
+  } else if (pageType === 'Category') {
+    // no eager initialization needed for Category pages;
+    // the product-list-page block handles its own initializers
+    // (search, wishlist) within its decorate() function.
   }
 }
 
@@ -214,6 +226,14 @@ function initializeAdobeDataLayer(pageType) {
 export async function fetchIndex(indexFile, pageSize = 500) {
   const handleIndex = async (offset) => {
     const resp = await fetch(`/${indexFile}.json?limit=${pageSize}&offset=${offset}`);
+    if (!resp.ok) {
+      return {
+        complete: true,
+        offset,
+        promise: null,
+        data: window.index[indexFile].data,
+      };
+    }
     const json = await resp.json();
 
     const newIndex = {
@@ -633,6 +653,53 @@ function getSkuFromUrl() {
 }
 
 /**
+ * Extracts category urlPath and id from the current URL or ?cp= param.
+ * @param {Document} [doc=document]
+ * @returns {{ urlPath: string, cateId: string }|null}
+ */
+export function getCategoryFromUrl(doc = document) {
+  const win = doc.defaultView || window;
+  const urlParams = new URLSearchParams(win.location.search);
+  const cp = urlParams.get('cp');
+  const path = cp ? decodeURIComponent(cp) : win.location.pathname;
+  const result = path.match(/\/categories\/(.+)$/);
+  if (result) {
+    const parts = result[1].split('/');
+    let urlPath = result[1];
+    let cateId = null;
+    // Only extract as ID if it clearly looks like base64 with padding
+    if (parts.length > 1 && parts[parts.length - 1].endsWith('=')) {
+      cateId = parts.pop();
+      urlPath = parts.join('/');
+    }
+    return { urlPath, cateId };
+  }
+  return null;
+}
+
+function _getCateIdFromUrl() {
+  return getCategoryFromUrl()?.cateId || null;
+}
+
+/**
+ * Detects server-rendered category JSON-LD from overlay or bulk metadata.
+ * @param {Document} [doc=document]
+ * @returns {boolean}
+ */
+export function isCategoryPrerendered(doc = document) {
+  return [...doc.querySelectorAll('script[type="application/ld+json"]')].some((script) => {
+    if (script.dataset.name === 'category-list') return true;
+    try {
+      const data = JSON.parse(script.textContent);
+      if (data?.['@type'] === 'ItemList') return true;
+      return data?.['@graph']?.some((node) => node?.['@type'] === 'ItemList');
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
  * Extracts the defaultSku property from the product-details block element.
  * @returns {string|null} The defaultSku value from the block, or null if not found
  */
@@ -652,6 +719,25 @@ function getDefaultSkuFromBlock() {
 }
 
 /**
+ * Extracts the defaultCategoryId property from the product-listing block element.
+ * @returns {string|null} The defaultCategoryId value from the block, or null if not found
+ */
+function _getDefaultCateIdFromBlock() {
+  const productListingBlock = document.querySelector('.product-list-page.block');
+  if (!productListingBlock) {
+    console.warn('No product-list-page block found');
+    return null;
+  }
+
+  const config = readBlockConfig(productListingBlock);
+  if (!config.defaultcateid) {
+    console.warn('No defaultCategoryId found in product-list-page block');
+    return null;
+  }
+  return config.defaultcateid;
+}
+
+/**
  * Checks if the current page is a product template page.
  * @returns {boolean} True if the current page matches a product template path
  */
@@ -660,6 +746,20 @@ export function isProductTemplate() {
   const { pathname } = window.location;
 
   return PRODUCT_TEMPLATE_PATHS.some((templatePath) => {
+    const fullPath = root ? `${root}${templatePath}` : templatePath;
+    return pathname === fullPath || pathname === fullPath.replace(/\/$/, '');
+  });
+}
+
+/**
+ * Checks if the current page is a category template page.
+ * @returns {boolean} True if the current page matches a category template path
+ */
+export function isCategoryTemplate() {
+  const root = getRootPath();
+  const { pathname } = window.location;
+
+  return CATEGORY_TEMPLATE_PATHS.some((templatePath) => {
     const fullPath = root ? `${root}${templatePath}` : templatePath;
     return pathname === fullPath || pathname === fullPath.replace(/\/$/, '');
   });
@@ -675,6 +775,18 @@ export function getProductLink(urlKey, sku) {
   const sanitizedUrlKey = urlKey ? sanitizeName(urlKey) : '';
   const sanitizedSku = sku ? sanitizeName(sku) : '';
   return rootLink(`/products/${sanitizedUrlKey}/${sanitizedSku}`);
+}
+
+export function getCategoryLink(urlKey, cateId) {
+  if (!urlKey) {
+    console.warn('getCategoryLink: urlKey is missing or empty', { urlKey, cateId });
+  }
+  if (!cateId) {
+    console.warn('getCategoryLink: cateId is missing or empty', { urlKey, cateId });
+  }
+  const sanitizedUrlKey = urlKey ? sanitizeName(urlKey) : '';
+  const sanitizedCateId = cateId ? sanitizeName(cateId) : '';
+  return rootLink(`/categories/${sanitizedUrlKey}/${sanitizedCateId}`);
 }
 
 /**

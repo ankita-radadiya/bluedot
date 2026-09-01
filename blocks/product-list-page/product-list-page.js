@@ -11,104 +11,737 @@ import { WishlistToggle } from '@dropins/storefront-wishlist/containers/Wishlist
 import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js';
 // Cart Dropin
 import * as cartApi from '@dropins/storefront-cart/api.js';
-import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
+import { isAemAssetsEnabled, isAemAssetsUrl, generateAemAssetsOptimizedUrl } from '@dropins/tools/lib/aem/assets.js';
 // Event Bus
 import { events } from '@dropins/tools/event-bus.js';
-// AEM
+
+// Relative Lib Imports (2 levels up to project root)
+import {
+  fetchPlaceholders,
+  getProductLink,
+  getCategoryFromUrl,
+  isCategoryPrerendered,
+  isCategoryTemplate,
+  IS_DA,
+  IS_UE,
+  CS_FETCH_GRAPHQL,
+  CORE_FETCH_GRAPHQL,
+  setJsonLd,
+  rootLink,
+} from '../../scripts/commerce.js';
 import { readBlockConfig } from '../../scripts/aem.js';
-import { fetchPlaceholders, getProductLink } from '../../scripts/commerce.js';
 import { getSearchStateFromUrl, applySearchStateToUrl } from './search-url.js';
+import { getGlobalBreadcrumbsContainer, renderBreadcrumbs } from '../../scripts/breadcrumbs.js';
+import { showNotification } from '../../scripts/components/notification.js';
 
 // Initializers
 import '../../scripts/initializers/search.js';
 import '../../scripts/initializers/wishlist.js';
 
+// Configuration Options
+const FACET_OPTIONS = {
+  defaultCollapsed: true,
+  categoriesFilterType: 'multi',
+};
+
+function safeRenderBreadcrumbs(container, categoryData, labels) {
+  try {
+    if (typeof renderBreadcrumbs === 'function' && container) {
+      renderBreadcrumbs(container, categoryData, labels);
+    }
+  } catch (error) {
+    console.error('Breadcrumb rendering failed on PLP:', error);
+  }
+}
+
+async function fetchStoreConfigPLP() {
+  const query = `
+    query StoreConfigPLP {
+      storeConfig {
+        grid_per_page
+        grid_per_page_values
+        list_mode
+        list_per_page
+        list_per_page_values
+      }
+    }
+  `;
+  try {
+    const { data } = await CORE_FETCH_GRAPHQL.fetchGraphQl(query, {
+      method: 'GET',
+      cache: 'force-cache',
+    });
+    return data?.storeConfig || null;
+  } catch (e) {
+    console.warn('Failed to fetch storeConfig for PLP', e);
+    return null;
+  }
+}
+
+function setCategoryJsonLd(payload, categoryPath) {
+  const items = payload?.result?.items || [];
+  if (!categoryPath || items.length === 0) return;
+
+  const categoryMeta = getCategoryFromUrl();
+  const categoryUrl = categoryMeta
+    ? `${window.location.origin}/categories/${categoryMeta.urlPath}/${categoryMeta.cateId}`
+    : window.location.href.split('?')[0];
+  const categoryName = categoryPath.split('/').pop()?.replace(/-/g, ' ') || categoryPath;
+
+  const itemListElement = items.slice(0, 8).map((product, index) => {
+    const amount = product.priceRange?.minimum?.final?.amount || product.price?.final?.amount;
+    let imageUrl = product.images?.[0]?.url || '';
+    if (imageUrl.startsWith('//')) {
+      imageUrl = `https:${imageUrl}`;
+    }
+    const productUrl = new URL(
+      getProductLink(product.urlKey, product.sku),
+      window.location.origin,
+    ).href;
+
+    return {
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'Product',
+        name: product.name,
+        url: productUrl,
+        image: imageUrl || undefined,
+        offers: amount?.value != null ? {
+          '@type': 'Offer',
+          price: amount.value,
+          priceCurrency: amount.currency || 'USD',
+          availability: product.inStock
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+        } : undefined,
+      },
+    };
+  });
+
+  setJsonLd({
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'ItemList',
+        '@id': `${categoryUrl}#list`,
+        name: categoryName,
+        url: categoryUrl,
+        numberOfItems: payload.result?.totalCount || items.length,
+        itemListOrder: 'https://schema.org/ItemListOrderAscending',
+        itemListElement,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: `${window.location.origin}/`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: categoryName,
+            item: categoryUrl,
+          },
+        ],
+      },
+    ],
+  }, 'category-list');
+
+  if (!isCategoryPrerendered() && !document.querySelector('meta[name="title"]')?.content) {
+    document.title = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+  }
+}
+
+async function resolveUrlPathFromCategoryId(categoryId) {
+  if (!categoryId) return null;
+
+  const query = `
+    query ResolveCategoryUrlPath($ids: [String!]!) {
+      categories(ids: $ids, roles: ["active"]) {
+        urlPath
+      }
+    }
+  `;
+
+  try {
+    const { data } = await CS_FETCH_GRAPHQL.fetchGraphQl(query, {
+      method: 'POST',
+      variables: { ids: [categoryId] },
+    });
+    return data?.categories?.[0]?.urlPath || null;
+  } catch (e) {
+    console.warn('Failed to resolve category urlPath for template preview', e);
+    return null;
+  }
+}
+
+function getCategoryMetadataFromUrl(urlPath) {
+  if (!urlPath) return null;
+  const clean = urlPath.replace(/^\//, '').replace(/\/$/, '');
+  const segments = clean.split('/');
+  const name = segments[segments.length - 1].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const breadcrumbs = segments.slice(0, -1).map((seg, i) => ({
+    category_name: seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    category_url_path: `/categories/${segments.slice(0, i + 1).join('/')}`,
+  }));
+
+  return { name, breadcrumbs };
+}
+
+async function getCategoryMetadata(categoryId, urlPath) {
+  if (!categoryId) return getCategoryMetadataFromUrl(urlPath);
+
+  const CATEGORY_METADATA_QUERY = `
+    query CategoryMetadata($ids: [String!]!) {
+      categories(
+        ids: $ids,
+        roles: ["active"],
+        subtree: { startLevel: 1, depth: 5 }
+      ) {
+        id
+        name
+        urlPath
+        parentId
+      }
+    }
+  `;
+
+  try {
+    const response = await CS_FETCH_GRAPHQL.fetchGraphQl(CATEGORY_METADATA_QUERY, {
+      variables: { ids: [categoryId] },
+    });
+
+    const allCategories = response.data?.categories || [];
+    const current = allCategories.find((c) => c.id === categoryId);
+
+    if (!current) {
+      return getCategoryMetadataFromUrl(urlPath);
+    }
+
+    const breadcrumbs = [];
+    const visited = new Set();
+    let pid = current.parentId;
+    while (pid && !visited.has(pid)) {
+      visited.add(pid);
+      const ancestor = allCategories.find((c) => c.id === pid); // eslint-disable-line no-loop-func
+      if (!ancestor) break;
+      breadcrumbs.unshift({
+        category_name: ancestor.name,
+        category_url_path: `/categories/${ancestor.urlPath.replace(/^\//, '')}`,
+      });
+      pid = ancestor.parentId;
+    }
+
+    return { name: current.name, breadcrumbs };
+  } catch (e) {
+    console.warn('Failed to fetch category metadata via Catalog Service', e);
+    return getCategoryMetadataFromUrl(urlPath);
+  }
+}
+
+function initCollapsibleFacets($facets) {
+  const processedGroups = new WeakSet();
+
+  function makeFacetGroupCollapsible(group) {
+    if (processedGroups.has(group)) return;
+
+    const headerEl = group.querySelector('.product-discovery-facet__header');
+    if (!headerEl) return;
+
+    processedGroups.add(group);
+    group.classList.add('plp-facet-group');
+
+    headerEl.classList.add('plp-facet-toggle');
+    headerEl.setAttribute('role', 'button');
+    headerEl.setAttribute('tabindex', '0');
+
+    if (FACET_OPTIONS.defaultCollapsed) {
+      group.classList.add('plp-facet-group--collapsed');
+      headerEl.setAttribute('aria-expanded', 'false');
+    } else {
+      headerEl.setAttribute('aria-expanded', 'true');
+    }
+
+    if (!headerEl.querySelector('.plp-facet-chevron')) {
+      const chevron = document.createElement('span');
+      chevron.className = 'plp-facet-chevron';
+      chevron.setAttribute('aria-hidden', 'true');
+      headerEl.appendChild(chevron);
+    }
+
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'plp-facet-content';
+    let node = headerEl.nextElementSibling;
+    while (node) {
+      const next = node.nextElementSibling;
+      contentWrapper.appendChild(node);
+      node = next;
+    }
+    group.appendChild(contentWrapper);
+
+    const toggle = () => {
+      const collapsed = group.classList.toggle('plp-facet-group--collapsed');
+      headerEl.setAttribute('aria-expanded', String(!collapsed));
+    };
+
+    headerEl.addEventListener('click', toggle);
+    headerEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  }
+
+  function decorateRenderedFacets() {
+    $facets
+      .querySelectorAll('.product-discovery-facet')
+      .forEach(makeFacetGroupCollapsible);
+  }
+
+  decorateRenderedFacets();
+
+  const observer = new MutationObserver(decorateRenderedFacets);
+  observer.observe($facets, { childList: true, subtree: true });
+
+  return observer;
+}
+
+function renderActiveFilterChips($container, activeFilters, onRemoveFilter, onResetAll) {
+  $container.innerHTML = '';
+
+  const userVisibleFilters = (activeFilters || []).filter(
+    (f) => f.attribute !== 'visibility'
+      && f.attribute !== 'category_uid'
+      && f.attribute !== 'categoryPath',
+  );
+
+  if (userVisibleFilters.length === 0) {
+    $container.style.display = 'none';
+    return;
+  }
+
+  $container.style.display = 'block';
+
+  const header = document.createElement('div');
+  header.className = 'plp-active-filters-header';
+
+  const titleToggle = document.createElement('div');
+  titleToggle.className = 'plp-active-filters-title-toggle';
+  titleToggle.innerHTML = `
+    <span class="plp-active-filters-title">FILTER OPTIONS (${userVisibleFilters.length})</span>
+  `;
+
+  const resetLink = document.createElement('button');
+  resetLink.type = 'button';
+  resetLink.className = 'plp-active-filters-reset';
+  resetLink.textContent = 'Reset';
+
+  resetLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onResetAll();
+  });
+
+  header.appendChild(titleToggle);
+
+  const list = document.createElement('div');
+  list.className = 'plp-active-filters-list';
+
+  userVisibleFilters.forEach((filter) => {
+    const attrName = filter.attribute.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    let filterValues = [];
+
+    if (Array.isArray(filter.in)) {
+      filterValues = filter.in;
+    } else if (filter.eq) {
+      filterValues = [filter.eq];
+    } else if (filter.range) {
+      filterValues = [`${filter.range.from || '0'} - ${filter.range.to || ''}`];
+    }
+
+    filterValues.forEach((val) => {
+      const chip = document.createElement('div');
+      chip.className = 'plp-active-filter-chip';
+      chip.innerHTML = `
+        <div class="plp-chip-contianer"><button type="button" class="plp-chip-remove" aria-label="Remove filter"><span></span></button>
+        <span class="plp-chip-label">${attrName}:</span> <span class="plp-chip-valye">${val}</span></div>
+      `;
+
+      chip.querySelector('.plp-chip-remove').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onRemoveFilter(filter.attribute, val);
+      });
+
+      list.appendChild(chip);
+    });
+  });
+
+  header.addEventListener('click', (e) => {
+    if (e.target.classList.contains('plp-active-filters-reset')) return;
+    $container.classList.toggle('is-collapsed');
+  });
+
+  $container.appendChild(header);
+  $container.appendChild(list);
+  $container.appendChild(resetLink);
+}
+
 export default async function decorate(block) {
   const labels = await fetchPlaceholders();
+  const storeConfig = await fetchStoreConfigPLP();
 
   const config = readBlockConfig(block);
-  const pageSize = parseInt(config.pagesize, 10) || 9;
+  const categoryMeta = getCategoryFromUrl();
+  const hasPrerenderedMarkup = block.dataset.prerendered === 'true';
+  const hasServerCategoryJsonLd = isCategoryPrerendered();
+
+  const gridDefaultSize = storeConfig?.grid_per_page || 12;
+  const gridAllowedValues = storeConfig?.grid_per_page_values
+    ? storeConfig.grid_per_page_values.split(',').map((v) => parseInt(v.trim(), 10)).filter(Boolean)
+    : [12, 24, 36];
+
+  const listDefaultSize = storeConfig?.list_per_page || 10;
+  const listAllowedValues = storeConfig?.list_per_page_values
+    ? storeConfig.list_per_page_values.split(',').map((v) => parseInt(v.trim(), 10)).filter(Boolean)
+    : [5, 10, 15, 20, 25];
+
+  const listModeConfig = storeConfig?.list_mode || 'grid-list';
+  const defaultMode = listModeConfig.startsWith('list') ? 'list' : 'grid';
+
+  const urlParams = new URLSearchParams(window.location.search);
+  let currentMode = urlParams.get('mode') || localStorage.getItem('plp_view_mode') || defaultMode;
+  if (!['grid', 'list'].includes(currentMode)) {
+    currentMode = defaultMode;
+  }
+
+  let allowedPageSizes = currentMode === 'list' ? listAllowedValues : gridAllowedValues;
+  let defaultPageSize = currentMode === 'list' ? listDefaultSize : gridDefaultSize;
+
+  const rawPageSize = urlParams.get('limit') || urlParams.get('pageSize') || config.pagesize;
+  const urlPageSize = parseInt(rawPageSize, 10);
+  let pageSize = (urlPageSize && allowedPageSizes.includes(urlPageSize))
+    ? urlPageSize
+    : defaultPageSize;
+
+  const urlCategoryPath = categoryMeta?.urlPath
+    || block.dataset.categoryUrlPath
+    || getCategoryFromUrl()?.urlPath;
+  if (urlCategoryPath) {
+    config.urlpath = urlCategoryPath;
+  } else if (!config.urlpath && config.defaultcateid && isCategoryTemplate() && (IS_UE || IS_DA)) {
+    const resolvedPath = await resolveUrlPathFromCategoryId(config.defaultcateid);
+    if (resolvedPath) {
+      config.urlpath = resolvedPath;
+    }
+  }
 
   const fragment = document.createRange().createContextualFragment(`
+    <div class="search__header"></div>
+    <div class="sidebar-toolbar">
+    <div class="plp-sidebar-toggle-wrapper">
+        <button type="button" class="plp-sidebar-toggle-btn" aria-label="Hide Filters" title="Hide Filters">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg>
+          <span class="toggle-btn-text">Hide Filters</span>
+        </button>
+      </div>
+      <div class="plp-toolbar-container">
+      <div class="plp-toolbar">
+         <div class="plp-filter-trigger-wrapper">
+           <div class="search__view-facets"></div>
+         </div>
+         <div class="plp-toolbar-controls">
+           <div class="plp-view-mode-toggle" aria-label="View Mode Toggle">
+             <button type="button" class="plp-view-btn plp-view-btn--grid" data-mode="grid" aria-label="Grid View" title="Grid View">
+               <span class="plp-view-icon grid-icon">
+               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+               </span>
+             </button>
+             <button type="button" class="plp-view-btn plp-view-btn--list" data-mode="list" aria-label="List View" title="List View">
+               <span class="plp-view-icon list-icon">
+                
+               </span>
+               <span class="plp-view-icon list-icon">
+               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>
+               </span>
+             </button>
+           </div>
+           <div class="plp-page-size-selector">
+             <label for="plp-page-size-select" class="plp-page-size-label">Show</label>
+             <select id="plp-page-size-select" class="plp-page-size-select" aria-label="Products Per Page"></select>
+           </div>
+         </div>
+         <div class="search__product-sort"></div>
+       </div>
+      </div>
+    </div>
     <div class="search__wrapper">
-      <div class="search__result-info"></div>
-      <div class="search__view-facets"></div>
-      <div class="search__facets"></div>
-      <div class="search__product-sort"></div>
-      <div class="search__product-list"></div>
-      <div class="search__pagination"></div>
+     <div class="column-main">
+       <div class="plp-active-filters-widget"></div>
+       <div class="search__product-list"></div>
+       <div class="search__pagination"></div>
+     </div>
+     <div class="sidebar-main plp-filter-drawer">
+        <div class="plp-drawer-header">
+          <div class="plp-header-content">
+            <span class="plp-drawer-title" style="display: none;">Now Shopping by</span>
+            <div class="plp-drawer-actions">
+              <button type="button" class="plp-reset-filters-btn" style="display: none;">Reset All</button>
+              <button type="button" class="plp-close-drawer-btn" aria-label="Close Filter Drawer">&times;</button>
+            </div>
+          </div>
+        </div>
+        <div class="plp-drawer-body">
+          <div class="search__facets"></div>
+        </div>
+     </div>
+     <div class="plp-filter-overlay"></div>
     </div>
   `);
 
-  const $resultInfo = fragment.querySelector('.search__result-info');
+  let $pageTitle = document.querySelector('.page-title') || fragment.querySelector('.plp-title') || fragment.querySelector('.page-title');
+  // Ensure we have a title element to update — if not, create one inside the fragment header
+  if (!$pageTitle) {
+    const headerEl = fragment.querySelector('.search__header');
+    if (headerEl) {
+      const h = document.createElement('h1');
+      h.className = 'page-title';
+      headerEl.appendChild(h);
+      $pageTitle = h;
+    }
+  }
   const $viewFacets = fragment.querySelector('.search__view-facets');
   const $facets = fragment.querySelector('.search__facets');
   const $productSort = fragment.querySelector('.search__product-sort');
   const $productList = fragment.querySelector('.search__product-list');
   const $pagination = fragment.querySelector('.search__pagination');
+  const $searchWrapper = fragment.querySelector('.search__wrapper');
+  const $pageSizeSelect = fragment.querySelector('#plp-page-size-select');
+  const $drawer = fragment.querySelector('.plp-filter-drawer');
+  const $overlay = fragment.querySelector('.plp-filter-overlay');
+  const $closeBtn = fragment.querySelector('.plp-close-drawer-btn');
+  const $resetBtn = fragment.querySelector('.plp-reset-filters-btn');
+  const $drawerTitle = fragment.querySelector('.plp-drawer-title');
+  const $activeFiltersWidget = fragment.querySelector('.plp-active-filters-widget');
 
-  block.innerHTML = '';
+  const fallbackNodes = hasPrerenderedMarkup ? [...block.childNodes] : [];
+
+  if (hasPrerenderedMarkup) {
+    $searchWrapper.hidden = true;
+  } else {
+    block.innerHTML = '';
+  }
   block.appendChild(fragment);
 
-  // Add url path back to the block for enrichment, incase enrichment block is
-  // executed after the plp block and block config is not available
+  const openFilterDrawer = () => {
+    $drawer.classList.add('is-open');
+    $overlay.classList.add('is-visible');
+    document.body.classList.add('plp-drawer-active');
+  };
+
+  const closeFilterDrawer = () => {
+    $drawer.classList.remove('is-open');
+    $overlay.classList.remove('is-visible');
+
+    setTimeout(() => {
+      document.body.classList.remove('plp-drawer-active');
+    }, 300);
+  };
+
+  $overlay.addEventListener('click', closeFilterDrawer);
+  $closeBtn.addEventListener('click', closeFilterDrawer);
+
+  // Desktop Sidebar Toggle with proper button functionality
+  const updateToggleButtonLabel = ($btn) => {
+    const isHidden = block.classList.contains('sidebar-hidden');
+    $btn.setAttribute('aria-label', isHidden ? 'Show Filters' : 'Hide Filters');
+    $btn.title = isHidden ? 'Show Filters' : 'Hide Filters';
+    const textSpan = $btn.querySelector('.toggle-btn-text');
+    if (textSpan) {
+      textSpan.textContent = isHidden ? 'Show Filters' : 'Hide Filters';
+    }
+  };
+
+  const initializeSidebarToggle = () => {
+    const $sidebarToggleBtn = block.querySelector('.plp-sidebar-toggle-btn');
+    if ($sidebarToggleBtn) {
+      // Remove existing listeners by cloning
+      const newBtn = $sidebarToggleBtn.cloneNode(true);
+      $sidebarToggleBtn.parentNode.replaceChild(newBtn, $sidebarToggleBtn);
+
+      newBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        block.classList.toggle('sidebar-hidden');
+        updateToggleButtonLabel(newBtn);
+      });
+
+      updateToggleButtonLabel(newBtn);
+    }
+  };
+
+  // Initialize toggle after fragment is appended
+  initializeSidebarToggle();
+
+  const searchState = getSearchStateFromUrl(new URL(window.location.href));
+  const visibilityFilter = { attribute: 'visibility', in: ['Search', 'Catalog, Search'] };
+  let userFilters = searchState.filter.filter((f) => f.attribute !== 'visibility');
+
+  const categoryId = categoryMeta?.cateId || block.dataset.categoryId
+    || getCategoryFromUrl()?.cateId || config.defaultcateid;
+
+  let searchSucceeded = true;
+  const executeSearch = async (targetPage = searchState.currentPage) => {
+    const categoryFilter = categoryId
+      ? { attribute: 'category_uid', eq: categoryId }
+      : { attribute: 'categoryPath', eq: config.urlpath };
+
+    const filterList = (config.urlpath || categoryId)
+      ? [categoryFilter, visibilityFilter, ...userFilters]
+      : [visibilityFilter, ...userFilters];
+
+    await search({
+      phrase: (config.urlpath || categoryId) ? '' : searchState.phrase,
+      currentPage: targetPage,
+      pageSize,
+      sort: searchState?.sort?.length ? searchState.sort : [{ attribute: 'position', direction: 'DESC' }],
+      filter: filterList,
+    }).catch((e) => {
+      searchSucceeded = false;
+      console.error('Error searching for products', e);
+    });
+  };
+
+  const resetAllFilters = async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('filter');
+    window.history.pushState({}, '', url.toString());
+
+    userFilters = [];
+    searchState.filter = [];
+
+    if (window.innerWidth < 1024) {
+      closeFilterDrawer();
+    }
+
+    await executeSearch(1);
+  };
+
+  $resetBtn.addEventListener('click', resetAllFilters);
+
+  const applyViewMode = (mode) => {
+    currentMode = mode;
+    localStorage.setItem('plp_view_mode', mode);
+    block.classList.remove('product-list-page--mode-grid', 'product-list-page--mode-list');
+    block.classList.add(`product-list-page--mode-${mode}`);
+
+    block.querySelectorAll('.plp-view-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+  };
+  applyViewMode(currentMode);
+
+  const updatePageSizeOptions = () => {
+    allowedPageSizes = currentMode === 'list' ? listAllowedValues : gridAllowedValues;
+    defaultPageSize = currentMode === 'list' ? listDefaultSize : gridDefaultSize;
+
+    if (!allowedPageSizes.includes(pageSize)) {
+      pageSize = defaultPageSize;
+    }
+
+    if ($pageSizeSelect) {
+      $pageSizeSelect.innerHTML = '';
+      allowedPageSizes.forEach((size) => {
+        const option = document.createElement('option');
+        option.value = size;
+        option.textContent = size;
+        if (size === pageSize) option.selected = true;
+        $pageSizeSelect.appendChild(option);
+      });
+    }
+  };
+  updatePageSizeOptions();
+
   if (config.urlpath) {
     block.dataset.urlpath = config.urlpath;
   }
+  if (categoryMeta?.cateId) {
+    block.dataset.categoryId = categoryMeta.cateId;
+  }
 
-  const searchState = getSearchStateFromUrl(new URL(window.location.href));
+  // --- BREADCRUMBS & HEADING RESOLUTION (SEARCH VS CATEGORY) ---
+  if (searchState.phrase) {
+    // 1. Search Results Context
+    const searchQuery = searchState.phrase;
+    $pageTitle.innerHTML = `Search Results for <span>"${searchQuery}"</span>`;
+    document.title = `Search Results for "${searchQuery}"`;
 
-  // Default visibility filter for all of our requests
-  const visibilityFilter = { attribute: 'visibility', in: ['Search', 'Catalog, Search'] };
-  const userFilters = searchState.filter.filter((f) => f.attribute !== 'visibility');
+    const searchBreadcrumbsData = {
+      name: `Search result for: "${searchQuery}"`,
+      breadcrumbs: [
+        {
+          category_url_path: '/',
+        },
+      ],
+    };
+    const globalBreadcrumbsContainer = getGlobalBreadcrumbsContainer();
+    safeRenderBreadcrumbs(globalBreadcrumbsContainer, searchBreadcrumbsData, labels);
+  } else if (config.urlpath || categoryId) {
+    // 2. Category Page Context
+    getCategoryMetadata(categoryId, config.urlpath).then((categoryData) => {
+      if (categoryData) {
+        $pageTitle.textContent = categoryData.name;
+        const globalBreadcrumbsContainer = getGlobalBreadcrumbsContainer();
+        safeRenderBreadcrumbs(globalBreadcrumbsContainer, categoryData, labels);
+        if (!document.querySelector('meta[name="title"]')?.content) {
+          document.title = categoryData.name;
+        }
+      }
+    }).catch((err) => {
+      console.error('Failed to resolve category metadata for breadcrumbs:', err);
+    });
+  }
 
-  // Normalize URL (e.g. pipe-separated filter values)
   const normalizedUrl = new URL(window.location.href);
   applySearchStateToUrl(normalizedUrl, searchState);
   window.history.replaceState({}, '', normalizedUrl.toString());
 
-  // Request search based on the page type on block load
-  if (config.urlpath) {
-    // If it's a category page...
-    await search({
-      phrase: '', // search all products in the category
-      currentPage: searchState.currentPage,
-      pageSize,
-      sort: searchState?.sort?.length ? searchState.sort : [{ attribute: 'position', direction: 'DESC' }],
-      filter: [
-        { attribute: 'categoryPath', eq: config.urlpath }, // Add category filter
-        // Always add visibility filter to the request
-        visibilityFilter,
-        ...userFilters,
-      ],
-    }).catch(() => {
-      console.error('Error searching for products');
+  await executeSearch();
+
+  block.querySelectorAll('.plp-view-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const newMode = btn.dataset.mode;
+      if (newMode === currentMode) return;
+      applyViewMode(newMode);
+      const prevPageSize = pageSize;
+      updatePageSizeOptions();
+
+      if (pageSize !== prevPageSize) {
+        await executeSearch(1);
+      }
     });
-  } else {
-    // Search page: dropin uses only the request (no URL parsing).
-    await search({
-      phrase: searchState.phrase,
-      currentPage: searchState.currentPage,
-      pageSize,
-      sort: searchState.sort,
-      // Always add visibility filter to the request
-      filter: [visibilityFilter, ...userFilters],
-    }).catch((e) => {
-      console.error('Error searching for products', e);
+  });
+
+  if ($pageSizeSelect) {
+    $pageSizeSelect.addEventListener('change', async (e) => {
+      const newSize = parseInt(e.target.value, 10);
+      if (newSize && newSize !== pageSize) {
+        pageSize = newSize;
+        await executeSearch(1);
+      }
     });
   }
 
-  const requiresPdpConfiguration = (product) => product.typename === 'ComplexProductView'
-    || product.attributes?.some((attr) => attr.name === 'ac_giftcard');
-
   const getAddToCartButton = (product) => {
-    const productName = product.name || product.sku;
-    const addToCartLabel = `${labels.Global?.AddProductToCart} ${productName}`;
-
-    if (requiresPdpConfiguration(product)) {
+    if (product.typename === 'ComplexProductView') {
       const button = document.createElement('div');
       UI.render(Button, {
-        'aria-label': addToCartLabel,
         children: labels.Global?.AddProductToCart,
         icon: Icon({ source: 'Cart' }),
         href: getProductLink(product.urlKey, product.sku),
@@ -118,105 +751,250 @@ export default async function decorate(block) {
     }
     const button = document.createElement('div');
     UI.render(Button, {
-      'aria-label': addToCartLabel,
       children: labels.Global?.AddProductToCart,
       icon: Icon({ source: 'Cart' }),
-      onClick: () => cartApi.addProductsToCart([{ sku: product.sku, quantity: 1 }]),
+      onClick: async (e) => {
+        const btnElement = e.currentTarget || button.querySelector('button');
+        const originalText = btnElement ? btnElement.textContent : labels.Global?.AddProductToCart;
+        try {
+          if (btnElement) {
+            btnElement.disabled = true;
+            btnElement.textContent = labels.Global?.AddingToCart || 'Adding...';
+          }
+          await cartApi.addProductsToCart([{ sku: product.sku, quantity: 1 }]);
+          showNotification({
+            type: 'success',
+            message: `${product.name || 'Product'} added to your cart.`,
+            linkText: 'View Cart',
+            linkUrl: rootLink('/cart'),
+          });
+        } catch (err) {
+          showNotification({
+            type: 'error',
+            message: err.message || 'Failed to add product to cart.',
+          });
+        } finally {
+          if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.textContent = originalText;
+          }
+        }
+      },
       variant: 'primary',
-      disabled: !product.inStock,
     })(button);
     return button;
   };
 
+  function observeSelectedFacets($container) {
+    const observer = new MutationObserver(() => {
+      const selectedFiltersList = $container.querySelector('.product-discovery-facet-list__selected-filters');
+      if (!selectedFiltersList) return;
+
+      const buttons = Array.from(selectedFiltersList.querySelectorAll('button'));
+      const filterChips = buttons.filter(
+        (btn) => !btn.textContent.trim().toLowerCase().includes('clear all') && !btn.classList.contains('reset'),
+      );
+
+      if (filterChips.length === 0) {
+        selectedFiltersList.classList.add('is-empty');
+        return;
+      }
+
+      selectedFiltersList.classList.remove('is-empty');
+
+      // Remove reset-all class from all buttons first
+      buttons.forEach((btn) => {
+        btn.classList.remove('reset-all');
+      });
+
+      // Find and apply reset-all class to only the first matching button
+      const clearAllBtn = buttons.find(
+        (btn) => btn.textContent.trim().toLowerCase().includes('clear all') || btn.classList.contains('reset'),
+      );
+
+      if (clearAllBtn) {
+        clearAllBtn.classList.add('reset-all');
+      }
+    });
+
+    observer.observe($container, { childList: true, subtree: true });
+  }
+
   await Promise.all([
-    // Sort By
     provider.render(SortBy, {})($productSort),
-
-    // Pagination
     provider.render(Pagination, {
-      onPageChange: () => {
-        // scroll to the top of the page
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      },
+      onPageChange: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     })($pagination),
-
-    // View Facets Button
     UI.render(Button, {
-      children: labels.Global?.Filters,
+      children: labels.Global?.Filters || 'Filters',
       icon: Icon({ source: 'Burger' }),
       variant: 'secondary',
-      onClick: () => {
-        $facets.classList.toggle('search__facets--visible');
-      },
+      onClick: openFilterDrawer,
     })($viewFacets),
-
-    // Facets
-    provider.render(Facets, {})($facets),
-    // Product List
+    provider.render(Facets, {
+      categoriesFilterType: FACET_OPTIONS.categoriesFilterType,
+    })($facets).then(() => {
+      initCollapsibleFacets($facets);
+      observeSelectedFacets($facets);
+    }),
     provider.render(SearchResults, {
       routeProduct: (product) => getProductLink(product.urlKey, product.sku),
       slots: {
         ProductImage: (ctx) => {
           const { product, defaultImageProps } = ctx;
+          const imgWidth = Number(defaultImageProps?.width) || 400;
+          const imgHeight = Number(defaultImageProps?.height) || 450;
+
           const anchorWrapper = document.createElement('a');
           anchorWrapper.href = getProductLink(product.urlKey, product.sku);
-          anchorWrapper.setAttribute('aria-label', product.name || product.sku);
+          anchorWrapper.className = 'product-discovery-product-item__image-link';
 
-          tryRenderAemAssetsImage(ctx, {
-            alias: product.sku,
-            imageProps: defaultImageProps,
-            wrapper: anchorWrapper,
-            params: {
-              width: defaultImageProps.width,
-              height: defaultImageProps.height,
-            },
-          });
+          let imgSrc = defaultImageProps?.src || '';
+          if (imgSrc && isAemAssetsEnabled() && isAemAssetsUrl(imgSrc)) {
+            imgSrc = generateAemAssetsOptimizedUrl(imgSrc, product.sku, {
+              width: imgWidth,
+              height: imgHeight,
+            });
+          }
+
+          const img = document.createElement('img');
+          img.src = imgSrc;
+          img.alt = defaultImageProps?.alt || product.name || '';
+          img.width = imgWidth;
+          img.height = imgHeight;
+          img.loading = defaultImageProps?.loading || 'lazy';
+          img.className = 'dropin-image product-discovery-product-item__image';
+          anchorWrapper.appendChild(img);
+
+          ctx.replaceWith(anchorWrapper);
         },
         ProductActions: (ctx) => {
           const actionsWrapper = document.createElement('div');
           actionsWrapper.className = 'product-discovery-product-actions';
-          // Add to Cart Button
+
+          const actionsSecondaryWrapper = document.createElement('div');
+          actionsSecondaryWrapper.className = 'product-discovery-product-actions__secondary';
+
           const addToCartBtn = getAddToCartButton(ctx.product);
           addToCartBtn.className = 'product-discovery-product-actions__add-to-cart';
-          // Wishlist Button
+
           const $wishlistToggle = document.createElement('div');
           $wishlistToggle.classList.add('product-discovery-product-actions__wishlist-toggle');
-          wishlistRender.render(WishlistToggle, {
-            product: ctx.product,
-            variant: 'tertiary',
-          })($wishlistToggle);
+          wishlistRender.render(WishlistToggle, { product: ctx.product, variant: 'tertiary' })($wishlistToggle);
+
+          const $compareBtnContainer = document.createElement('div');
+          $compareBtnContainer.classList.add('product-discovery-product-actions__compare');
+
+          const compareBtn = document.createElement('button');
+          compareBtn.className = 'dropin-button';
+          compareBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>${labels.Global?.Compare || 'Compare'}</span>
+          `;
+          compareBtn.addEventListener('click', () => {
+            import('../../scripts/compare-service.js').then(({ CompareService }) => {
+              CompareService.addProduct({
+                sku: ctx.product.sku,
+                name: ctx.product.name,
+                image: ctx.product.images?.[0]?.url || '',
+                urlKey: ctx.product.urlKey,
+                price: ctx.product.priceRange?.minimum?.final?.amount?.value
+                  || ctx.product.price?.final?.amount?.value,
+              });
+              events.emit('compare/update');
+              showNotification({
+                type: 'success',
+                message: `${ctx.product.name || 'Product'} has been added to compare list.`,
+                linkText: 'View Compare',
+                linkUrl: rootLink('/compare'),
+              });
+            });
+          });
+
+          $compareBtnContainer.appendChild(compareBtn);
+
           actionsWrapper.appendChild(addToCartBtn);
-          actionsWrapper.appendChild($wishlistToggle);
+          actionsSecondaryWrapper.appendChild($wishlistToggle);
+          actionsSecondaryWrapper.appendChild($compareBtnContainer);
+          actionsWrapper.appendChild(actionsSecondaryWrapper);
           ctx.replaceWith(actionsWrapper);
         },
       },
     })($productList),
   ]);
 
-  // Listen for search results (event is fired before the block is rendered; eager: true)
+  if (hasPrerenderedMarkup && searchSucceeded) {
+    fallbackNodes.forEach((node) => node.remove());
+    $searchWrapper.hidden = false;
+    block.dataset.enhanced = 'true';
+  }
+
   events.on('search/result', (payload) => {
     const totalCount = payload.result?.totalCount || 0;
-
     block.classList.toggle('product-list-page--empty', totalCount === 0);
 
-    // Results Info
-    $resultInfo.innerHTML = payload.request?.phrase
-      ? `${totalCount} results found for <strong>"${payload.request.phrase}"</strong>.`
-      : `${totalCount} results found.`;
+    const activeUserFilters = (payload.request.filter || []).filter(
+      (f) => f.attribute !== 'visibility'
+        && f.attribute !== 'category_uid'
+        && f.attribute !== 'categoryPath',
+    );
+    userFilters = activeUserFilters;
 
-    // Update the view facets button with the number of filters
-    if (payload.request.filter.length > 0) {
-      $viewFacets.querySelector('button').setAttribute('data-count', payload.request.filter.length);
+    if ($resetBtn) {
+      $resetBtn.style.display = activeUserFilters.length > 0 ? 'inline-block' : 'none';
+    }
+    if ($drawerTitle) {
+      $drawerTitle.style.display = activeUserFilters.length > 0 ? 'inline-block' : 'none';
+    }
+
+    renderActiveFilterChips(
+      $activeFiltersWidget,
+      activeUserFilters,
+      async (attribute, valueToRemove) => {
+        userFilters = userFilters.reduce((acc, f) => {
+          if (f.attribute !== attribute) {
+            acc.push(f);
+            return acc;
+          }
+
+          if (Array.isArray(f.in)) {
+            const updatedIn = f.in.filter((v) => String(v) !== String(valueToRemove));
+            if (updatedIn.length > 0) {
+              acc.push({ ...f, in: updatedIn });
+            }
+          } else if (f.eq && String(f.eq) !== String(valueToRemove)) {
+            acc.push(f);
+          }
+          return acc;
+        }, []);
+
+        searchState.filter = userFilters;
+        const currentUrl = new URL(window.location.href);
+        applySearchStateToUrl(currentUrl, { ...payload.request, filter: userFilters });
+        window.history.pushState({}, '', currentUrl.toString());
+
+        await executeSearch(1);
+      },
+      resetAllFilters,
+    );
+
+    const filterBtn = $viewFacets.querySelector('button');
+    if (activeUserFilters.length > 0) {
+      filterBtn?.setAttribute('data-count', activeUserFilters.length);
     } else {
-      $viewFacets.querySelector('button').removeAttribute('data-count');
+      filterBtn?.removeAttribute('data-count');
+    }
+
+    if (config.urlpath && !hasServerCategoryJsonLd) {
+      setCategoryJsonLd(payload, config.urlpath);
     }
   }, { eager: true });
 
-  // Listen for search results (event is fired after the block is rendered; eager: false)
-  // URL is owned by this project; update it when search state changes.
   events.on('search/result', (payload) => {
     const url = new URL(window.location.href);
     applySearchStateToUrl(url, payload.request);
     window.history.pushState({}, '', url.toString());
   }, { eager: false });
+
+  return Promise.resolve();
 }
