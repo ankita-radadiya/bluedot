@@ -28,6 +28,67 @@ main > .section .carousel-banners-wrapper {
   height: 60vw;
 }
 
+/* ---- prev/next nav buttons ---- */
+.carousel-banners .carousel-nav-buttons {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.carousel-banners .carousel-nav-prev,
+.carousel-banners .carousel-nav-next {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  margin: 0 var(--spacing-small);
+  border: none;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 100%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-banners .carousel-nav-prev::before,
+.carousel-banners .carousel-nav-next::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border: solid var(--text-color, #000);
+  border-width: 0 2px 2px 0;
+}
+
+.carousel-banners .carousel-nav-prev::before {
+  transform: rotate(135deg) translate(-2px, -2px);
+}
+
+.carousel-banners .carousel-nav-next::before {
+  transform: rotate(-45deg) translate(-2px, -2px);
+}
+
+/* nav buttons + dot indicators stay hidden until the slider is hovered
+   or a control inside it receives keyboard focus */
+.carousel-banners .carousel-banners-carousel-col .carousel-nav-prev,
+.carousel-banners .carousel-banners-carousel-col .carousel-nav-next,
+.carousel-banners .carousel-banners-carousel-col .carousel-slide-indicators {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.carousel-banners .carousel-banners-carousel-col:hover .carousel-nav-prev,
+.carousel-banners .carousel-banners-carousel-col:hover .carousel-nav-next,
+.carousel-banners .carousel-banners-carousel-col:hover .carousel-slide-indicators,
+.carousel-banners .carousel-banners-carousel-col:focus-within .carousel-nav-prev,
+.carousel-banners .carousel-banners-carousel-col:focus-within .carousel-nav-next,
+.carousel-banners .carousel-banners-carousel-col:focus-within .carousel-slide-indicators {
+  opacity: 1;
+}
+
 /* ---- right: banners column ---- */
 .carousel-banners .carousel-banners-banners-col {
   list-style: none;
