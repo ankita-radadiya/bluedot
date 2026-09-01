@@ -38,7 +38,6 @@
 .newsletter-form {
   padding: 15px;
   display: flex;
-  max-width: 42%;
   flex-direction: column;
 }
 
@@ -126,5 +125,9 @@
 
 .newsletter-content .newsletter-description {
   margin-top: 0;
+}
+
+.newsletter-form {
+  max-width: 42%;
 }
 }

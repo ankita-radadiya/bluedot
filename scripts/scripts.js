@@ -1,3 +1,4 @@
+import { getRootPath } from '@dropins/tools/lib/aem/configs.js';
 import {
   loadHeader,
   loadFooter,
@@ -193,6 +194,49 @@ export function decorateMain(main) {
   decorateButtons(main);
 }
 
+function createGlobalBreadcrumbsContainer(doc = document) {
+  const rootPath = getRootPath().replace(/\/$/, '') || '/';
+  const pathname = window.location.pathname.replace(/\/$/, '') || '/';
+
+  // 1. Exit early if on the home page
+  if (pathname === rootPath) return null;
+
+  const header = doc.querySelector('header');
+  if (!header) return null;
+
+  const isPlpPage = pathname.startsWith('/categories/');
+
+  // 2. Select existing container based on page type
+  let container = isPlpPage
+    ? doc.querySelector('.category-banner-wrapper')
+    : doc.querySelector('.breadcrumbs-container');
+
+  // 3. Only create and construct DOM elements if container doesn't exist yet
+  if (!container) {
+    if (isPlpPage) {
+      container = document.createElement('div');
+      container.className = 'category-banner-wrapper';
+
+      const breadcrumbsEl = document.createElement('div');
+      breadcrumbsEl.className = 'breadcrumbs-container';
+
+      const pageTitleEl = document.createElement('h1');
+      pageTitleEl.className = 'page-title';
+
+      container.appendChild(breadcrumbsEl);
+      container.appendChild(pageTitleEl);
+    } else {
+      container = document.createElement('div');
+      container.className = 'breadcrumbs-container';
+    }
+
+    // Insert newly created container directly after header
+    header.insertAdjacentElement('afterend', container);
+  }
+
+  return container;
+}
+
 /**
  * Loads everything needed to get to LCP.
  * @param {Element} doc The container element
@@ -200,6 +244,7 @@ export function decorateMain(main) {
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
   decorateTemplateAndTheme();
+  createGlobalBreadcrumbsContainer(doc);
 
   const main = doc.querySelector('main');
   if (main) {
@@ -265,6 +310,23 @@ function loadDelayed() {
 }
 
 async function loadPage() {
+  const { pathname, search } = window.location;
+
+  // If we are on a natural category path that is not default, redirect to default template
+  if (pathname.startsWith('/categories/') && pathname !== '/categories/default') {
+    window.location.replace(`/categories/default?cp=${encodeURIComponent(pathname)}`);
+    return;
+  }
+
+  // If we are on the default template with a cp parameter, clean the URL visually
+  if (pathname === '/categories/default' && search.includes('cp=')) {
+    const urlParams = new URLSearchParams(search);
+    const cp = urlParams.get('cp');
+    if (cp) {
+      window.history.replaceState({}, '', decodeURIComponent(cp));
+    }
+  }
+
   await loadEager(document);
   await loadLazy(document);
   loadDelayed();
