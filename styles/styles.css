@@ -154,10 +154,11 @@ body {
   margin: 0;
   color: var(--color-neutral-800);
   background-color: var(--background-color);
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  grid-template-columns: 100%;
   -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 body:not(.appear) {
