@@ -6,7 +6,6 @@
 
   max-width: var(--container-width, 1200px);
   margin: 0 auto;
-  padding: 0 16px 32px;
 }
 
 .tabs .tabs-list {
@@ -60,7 +59,7 @@
 }
 
 .tabs .tabs-panel-media {
-  flex: 1 1 auto;
+  flex: 1.5;
   min-height: 0;
   line-height: 0;
 }
@@ -79,6 +78,7 @@
 }
 
 .tabs .tabs-panel-description {
+  flex: 1;
   padding: 16px 24px;
   text-align: center;
   line-height: 1.5;

@@ -85,6 +85,38 @@ function bindEvents(block) {
   });
 }
 
+function createNavigationButtons(block, placeholders) {
+  const nav = document.createElement('div');
+  nav.classList.add('carousel-nav-buttons');
+
+  const prevButton = document.createElement('button');
+  prevButton.type = 'button';
+  prevButton.classList.add('carousel-nav-prev');
+  prevButton.setAttribute(
+    'aria-label',
+    placeholders.previousSlide || 'Previous Slide',
+  );
+  prevButton.addEventListener('click', () => {
+    const current = parseInt(block.dataset.activeSlide || '0', 10);
+    showSlide(block, current - 1);
+  });
+
+  const nextButton = document.createElement('button');
+  nextButton.type = 'button';
+  nextButton.classList.add('carousel-nav-next');
+  nextButton.setAttribute(
+    'aria-label',
+    placeholders.nextSlide || 'Next Slide',
+  );
+  nextButton.addEventListener('click', () => {
+    const current = parseInt(block.dataset.activeSlide || '0', 10);
+    showSlide(block, current + 1);
+  });
+
+  nav.append(prevButton, nextButton);
+  return nav;
+}
+
 function startAutoplay(block, interval = 6000) {
   const slides = block.querySelectorAll('.carousel-slide');
   if (slides.length < 2) return;
@@ -185,6 +217,7 @@ export default async function decorate(block) {
     slideIndicators.classList.add('carousel-slide-indicators');
     slideIndicatorsNav.append(slideIndicators);
     carouselCol.append(slideIndicatorsNav);
+    carouselCol.append(createNavigationButtons(block, placeholders));
   }
 
   slideRows.forEach((row, idx) => {
