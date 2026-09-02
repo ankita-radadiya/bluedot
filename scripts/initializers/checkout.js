@@ -1,7 +1,10 @@
+/* eslint-disable import/no-unresolved */
+import { getCartDataFromCache } from '@dropins/storefront-cart/api.js';
 import { initializers } from '@dropins/tools/initializer.js';
 import { initialize, setEndpoint } from '@dropins/storefront-checkout/api.js';
 import { initializeDropin } from './index.js';
 import { CORE_FETCH_GRAPHQL, fetchPlaceholders } from '../commerce.js';
+import { resolveCartRequiresFfl } from '../ffl/index.js';
 
 await initializeDropin(async () => {
   // Set Fetch GraphQL (Core)
@@ -15,6 +18,10 @@ await initializeDropin(async () => {
     },
   };
 
+  const defaults = await resolveCartRequiresFfl(getCartDataFromCache())
+    ? { isBillToShipping: true }
+    : {};
+
   // Initialize checkout
-  return initializers.mountImmediately(initialize, { langDefinitions });
+  return initializers.mountImmediately(initialize, { langDefinitions, defaults });
 })();

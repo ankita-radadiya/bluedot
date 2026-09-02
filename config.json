@@ -2,6 +2,12 @@
   "public": {
     "default": {
       "commerce-endpoint": "https://na1-sandbox.api.commerce.adobe.com/4XR4RKXgJjQXaxUCMC6TN3/graphql",
+      "commerce-ffl-endpoint": "https://edge-sandbox-graph.adobe.io/api/76a146d4-d543-4db2-8ed0-dd04c60eca91/graphql",
+      "commerce-ffl-attribute": "isFFL",
+      "commerce-ffl-radius-options": "5,10,25,50",
+      "commerce-ffl-default-country": "US",
+      "commerce-ffl-license-prefix": "FFL-License : ",
+      "commerce-ffl-fallback-phone": "0000000000",
       "headers": {
         "all": {
           "Store": "default"

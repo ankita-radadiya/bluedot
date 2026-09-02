@@ -66,6 +66,11 @@ import {
 } from './constants.js';
 
 import { rootLink } from '../../scripts/commerce.js';
+import {
+  clearStoredFflDealer,
+  syncFflSection,
+  validateFflSelection,
+} from '../../scripts/ffl/index.js';
 
 // Initializers
 import '../../scripts/initializers/account.js';
@@ -124,6 +129,7 @@ export default async function decorate(block) {
   const $serverError = getElement(selectors.checkout.serverError);
   const $outOfStock = getElement(selectors.checkout.outOfStock);
   const $login = getElement(selectors.checkout.login);
+  const $ffl = getElement(selectors.checkout.ffl);
   const $shippingForm = getElement(selectors.checkout.shippingForm);
   const $billToShipping = getElement(selectors.checkout.billToShipping);
   const $delivery = getElement(selectors.checkout.delivery);
@@ -137,13 +143,45 @@ export default async function decorate(block) {
 
   block.appendChild(checkoutFragment);
 
-  const handleValidation = () => validateForms([
-    { name: LOGIN_FORM_NAME },
-    { name: SHIPPING_FORM_NAME, ref: shippingFormRef },
-    { name: BILLING_FORM_NAME, ref: billingFormRef },
-    { name: PURCHASE_ORDER_FORM_NAME },
-    { name: TERMS_AND_CONDITIONS_FORM_NAME },
-  ]);
+  let fflRequired = false;
+  let fflUi;
+
+  const hideBillingForm = () => {
+    billingForm?.remove();
+    billingForm = null;
+    billingFormRef.current = null;
+    $billingForm.innerHTML = '';
+    $billingForm.style.display = 'none';
+  };
+
+  const refreshFflSection = async (cart, checkoutData) => {
+    const nextState = await syncFflSection({
+      cart,
+      checkoutData,
+      block,
+      fflEl: $ffl,
+      fflUi,
+    });
+    fflRequired = nextState.required;
+    fflUi = nextState.fflUi;
+  };
+
+  const handleValidation = () => {
+    if (!validateFflSelection(block, fflUi, $ffl)) return false;
+
+    const forms = [
+      { name: LOGIN_FORM_NAME },
+      { name: PURCHASE_ORDER_FORM_NAME },
+      { name: TERMS_AND_CONDITIONS_FORM_NAME },
+    ];
+
+    if (!fflRequired) {
+      forms.splice(1, 0, { name: SHIPPING_FORM_NAME, ref: shippingFormRef });
+      forms.splice(2, 0, { name: BILLING_FORM_NAME, ref: billingFormRef });
+    }
+
+    return validateForms(forms);
+  };
 
   const handlePlaceOrder = async ({ cartId, code }) => {
     await displayOverlaySpinner(loaderRef, $loader, $loaderStatus);
@@ -222,6 +260,8 @@ export default async function decorate(block) {
 
   async function initializeCheckout(data) {
     await initReCaptcha(0);
+    const latestCart = events.lastPayload('cart/data') || events.lastPayload('cart/initialized');
+    await refreshFflSection(latestCart, data);
     if (data.isGuest) await displayGuestAddressForms(data);
     else {
       removeOverlaySpinner(loaderRef, $loader, $loaderStatus);
@@ -230,14 +270,20 @@ export default async function decorate(block) {
   }
 
   async function displayGuestAddressForms(data) {
-    if (isVirtualCart(data)) {
+    if (isVirtualCart(data) || fflRequired) {
       shippingForm?.remove();
       shippingForm = null;
+      shippingFormRef.current = null;
       $shippingForm.innerHTML = '';
     } else if (!shippingForm) {
       shippingFormSkeleton.remove();
 
       shippingForm = await renderAddressForm($shippingForm, shippingFormRef, data, 'shipping');
+    }
+
+    if (fflRequired) {
+      hideBillingForm();
+      return;
     }
 
     if (!billingForm) {
@@ -248,9 +294,12 @@ export default async function decorate(block) {
   }
 
   async function displayCustomerAddressForms(data) {
-    if (isVirtualCart(data)) {
+    if (isVirtualCart(data) || fflRequired) {
       shippingAddresses?.remove();
       shippingAddresses = null;
+      shippingForm?.remove();
+      shippingForm = null;
+      shippingFormRef.current = null;
       $shippingForm.innerHTML = '';
     } else if (!shippingAddresses) {
       shippingForm?.remove();
@@ -262,6 +311,13 @@ export default async function decorate(block) {
         shippingFormRef,
         data,
       );
+    }
+
+    if (fflRequired) {
+      billingAddresses?.remove();
+      billingAddresses = null;
+      hideBillingForm();
+      return;
     }
 
     if (!billingAddresses) {
@@ -299,6 +355,10 @@ export default async function decorate(block) {
 
   function handleCheckoutValues(payload) {
     const { isBillToShipping } = payload;
+    if (fflRequired) {
+      $billingForm.style.display = 'none';
+      return;
+    }
     $billingForm.style.display = isBillToShipping ? 'none' : 'block';
   }
 
@@ -306,6 +366,7 @@ export default async function decorate(block) {
     // Clear address form data
     sessionStorage.removeItem(SHIPPING_ADDRESS_DATA_KEY);
     sessionStorage.removeItem(BILLING_ADDRESS_DATA_KEY);
+    clearStoredFflDealer();
 
     const url = buildOrderDetailsUrl(orderData);
 
@@ -320,5 +381,11 @@ export default async function decorate(block) {
   events.on('checkout/values', handleCheckoutValues);
   events.on('order/placed', handleOrderPlaced);
   events.on('cart/initialized', redirectToCartIfEmpty, { eager: true });
-  events.on('cart/data', redirectToCartIfEmpty);
+  events.on('cart/data', (updatedCart) => {
+    redirectToCartIfEmpty(updatedCart);
+    refreshFflSection(
+      updatedCart,
+      events.lastPayload('checkout/updated') || events.lastPayload('checkout/initialized'),
+    );
+  });
 }
