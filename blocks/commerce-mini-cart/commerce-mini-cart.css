@@ -155,14 +155,14 @@ header nav .minicart-panel.nav-tools-panel--show {
     text-decoration: none;
 }
 
-.dropin-cart-item__sku,
-.dropin-cart-item__total,
-.dropin-cart-item__price__quantity {
+.minicart-wrapper .dropin-cart-item__sku,
+.minicart-wrapper .dropin-cart-item__total,
+.minicart-wrapper .dropin-cart-item__price__quantity {
   display: none;
 }
 
 /* Quantity Stepper Pill (- 1 +) */
-.dropin-cart-item__quantity {
+.minicart-wrapper .dropin-cart-item__quantity {
   grid-column: 2;
   grid-row: 2;
   margin: 4px 0;
@@ -180,11 +180,11 @@ header nav .minicart-panel.nav-tools-panel--show {
   color: #000;
 }
 
-.dropin-incrementer__input[type="number"] {
+.minicart-wrapper .dropin-incrementer__input[type="number"] {
   width: 32px;
 }
 
-.dropin-incrementer__content,
+.minicart-wrapper .dropin-incrementer__content,
 .minicart-qty-pill {
   display: inline-flex;
   align-items: center;
@@ -195,7 +195,7 @@ header nav .minicart-panel.nav-tools-panel--show {
   gap: 16px;
 }
 
-.dropin-incrementer .dropin-incrementer__content, .minicart-qty-pill {
+.minicart-wrapper .dropin-incrementer .dropin-incrementer__content, .minicart-qty-pill {
   height: auto;
   padding: 2px 5px;
 }
