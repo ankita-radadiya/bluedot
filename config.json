@@ -10,12 +10,12 @@
       "commerce-ffl-fallback-phone": "0000000000",
       "headers": {
         "all": {
-          "Store": "default"
+          "Store": "bca"
         },
         "cs": {
-          "Magento-Store-Code": "main_website_store",
-          "Magento-Store-View-Code": "default",
-          "Magento-Website-Code": "base"
+          "Magento-Store-Code": "bca",
+          "Magento-Store-View-Code": "bca",
+          "Magento-Website-Code": "bca"
         }
       },
       "commerce-b2b-enabled": false,
@@ -39,7 +39,7 @@
       },
       "plugins": {
         "picker": {
-          "rootCategory": "2"
+          "rootCategory": "42"
         }
       }
     }
