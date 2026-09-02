@@ -10,7 +10,7 @@ import {
 } from '@dropins/tools/components.js';
 
 // Dropin Containers
-import CartSummaryList from '@dropins/storefront-cart/containers/CartSummaryList.js';
+import { CartSummaryTable } from '@dropins/storefront-cart/containers/CartSummaryTable.js';
 import OrderSummary from '@dropins/storefront-cart/containers/OrderSummary.js';
 import EstimateShipping from '@dropins/storefront-cart/containers/EstimateShipping.js';
 import Coupons from '@dropins/storefront-cart/containers/Coupons.js';
@@ -34,13 +34,27 @@ import '../../scripts/initializers/wishlist.js';
 
 import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/commerce.js';
+import { getGlobalBreadcrumbsContainer, renderBreadcrumbs } from '../../scripts/breadcrumbs.js';
+
+/**
+ * Safely renders breadcrumbs without breaking the block execution if an error occurs.
+ */
+function safeRenderBreadcrumbs(container, categoryData, labels) {
+  try {
+    if (typeof renderBreadcrumbs === 'function' && container) {
+      renderBreadcrumbs(container, categoryData, labels);
+    }
+  } catch (error) {
+    console.error('Breadcrumb rendering failed on Cart page:', error);
+  }
+}
 
 export default async function decorate(block) {
   // Configuration
   const {
-    'hide-heading': hideHeading = 'false',
-    'max-items': maxItems,
-    'hide-attributes': hideAttributes = '',
+    'hide-heading': _hideHeading = 'false',
+    'max-items': _maxItems,
+    'hide-attributes': _hideAttributes = '',
     'enable-item-quantity-update': enableUpdateItemQuantity = 'false',
     'enable-item-remove': enableRemoveItem = 'true',
     'enable-estimate-shipping': enableEstimateShipping = 'false',
@@ -58,9 +72,12 @@ export default async function decorate(block) {
   let currentModal = null;
   let currentNotification = null;
 
-  // Layout
+  // Layout: breadcrumbs, cart title, two-column wrapper
+  const cartTitle = placeholders?.Global?.CartTitle || 'Shopping Cart';
   const fragment = document.createRange().createContextualFragment(`
+    <div class="cart__breadcrumbs"></div>
     <div class="cart__notification"></div>
+    <h1 class="cart__title">${cartTitle}</h1>
     <div class="cart__wrapper">
       <div class="cart__left-column">
         <div class="cart__list"></div>
@@ -84,6 +101,14 @@ export default async function decorate(block) {
 
   block.innerHTML = '';
   block.appendChild(fragment);
+
+  // Render Breadcrumbs for Cart Page
+  const cartBreadcrumbsData = {
+    name: placeholders?.Global?.CartTitle || 'Shopping Cart',
+    breadcrumbs: [],
+  };
+  const globalBreadcrumbsContainer = getGlobalBreadcrumbsContainer();
+  safeRenderBreadcrumbs(globalBreadcrumbsContainer, cartBreadcrumbsData, placeholders);
 
   // Wishlist variables
   const routeToWishlist = rootLink('/wishlist');
@@ -170,21 +195,16 @@ export default async function decorate(block) {
   // Render Containers
   const createProductLink = (product) => getProductLink(product.url.urlKey, product.topLevelSku);
   await Promise.all([
-    // Cart List
-    provider.render(CartSummaryList, {
-      hideHeading: hideHeading === 'true',
+    // Cart Table (table-layout for product listing)
+    provider.render(CartSummaryTable, {
       routeProduct: createProductLink,
       routeEmptyCartCTA: startShoppingURL ? () => rootLink(startShoppingURL) : undefined,
-      maxItems: parseInt(maxItems, 10) || undefined,
-      attributesToHide: hideAttributes
-        .split(',')
-        .map((attr) => attr.trim().toLowerCase()),
-      enableUpdateItemQuantity: enableUpdateItemQuantity === 'true',
-      enableRemoveItem: enableRemoveItem === 'true',
+      allowQuantityUpdates: enableUpdateItemQuantity === 'true',
+      allowRemoveItems: enableRemoveItem === 'true',
       undo: undo === 'true',
       slots: {
         Thumbnail: (ctx) => {
-          const { item, defaultImageProps } = ctx;
+          const { item, defaultImageProps, index: _index } = ctx;
           const anchorWrapper = document.createElement('a');
           anchorWrapper.href = createProductLink(item);
 
@@ -200,7 +220,63 @@ export default async function decorate(block) {
           });
         },
 
-        Footer: (ctx) => {
+        Quantity: (ctx) => {
+          const itemUid = ctx.item?.uid;
+          const currentQty = ctx.item?.quantity || 1;
+          const wrapper = document.createElement('div');
+          wrapper.className = 'cart-quantity-stepper-wrapper';
+
+          wrapper.innerHTML = `
+            <div class="cart-quantity-stepper">
+              <button type="button" class="cart-qty-btn decrease-quantity" data-action="dec" ${currentQty <= 1 ? 'disabled' : ''} aria-label="Decrease quantity"><span>Decrease quantity</span></button>
+              <input type="number" name="quantity" aria-label="Item Quantity" class="cart-qty-input" value="${currentQty}" min="1" />
+              <button type="button" class="cart-qty-btn increase-quantity" data-action="inc" aria-label="Increase quantity"><span>Increase quantity</span></button>
+            </div>
+          `;
+
+          const input = wrapper.querySelector('.cart-qty-input');
+          const decBtn = wrapper.querySelector('.cart-qty-btn[data-action="dec"]');
+          const incBtn = wrapper.querySelector('.cart-qty-btn[data-action="inc"]');
+
+          const updateQuantity = async (newVal) => {
+            let qty = parseInt(newVal, 10);
+            if (Number.isNaN(qty) || qty < 1) qty = 1;
+
+            input.value = qty;
+            if (decBtn) decBtn.disabled = qty <= 1;
+
+            if (itemUid) {
+              try {
+                ctx.handleItemsLoading?.(true);
+                await Cart.updateProductsFromCart([{ uid: itemUid, quantity: qty }]);
+              } catch (err) {
+                console.error('Failed to update product quantity:', err);
+              } finally {
+                ctx.handleItemsLoading?.(false);
+              }
+            }
+          };
+
+          decBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            const qty = parseInt(input.value || '1', 10);
+            if (qty > 1) updateQuantity(qty - 1);
+          });
+
+          incBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            const qty = parseInt(input.value || '1', 10);
+            updateQuantity(qty + 1);
+          });
+
+          input?.addEventListener('change', (e) => {
+            updateQuantity(e.target.value);
+          });
+
+          ctx.replaceWith(wrapper);
+        },
+
+        Actions: (ctx) => {
           // Edit Link
           if (ctx.item?.itemType === 'ConfigurableCartItem' && enableUpdatingProduct === 'true') {
             const editLink = document.createElement('div');
@@ -208,9 +284,6 @@ export default async function decorate(block) {
 
             UI.render(Button, {
               children: placeholders?.Global?.CartEditButton,
-              // Every cart item renders its own Edit button, so the accessible
-              // name must include the product name to distinguish them.
-              'aria-label': `${placeholders?.Global?.CartEditButton} ${ctx.item.name}`,
               variant: 'tertiary',
               size: 'medium',
               icon: h(Icon, { source: 'Edit' }),
@@ -220,7 +293,7 @@ export default async function decorate(block) {
             ctx.appendChild(editLink);
           }
 
-          // Wishlist Button (if product is not configurable)
+          // Wishlist Button
           const $wishlistToggle = document.createElement('div');
           $wishlistToggle.classList.add('cart__action--wishlist-toggle');
 

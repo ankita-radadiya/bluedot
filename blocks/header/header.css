@@ -487,10 +487,6 @@ header .nav-search-panel .search-bar-result a:hover {
   text-decoration: none;
 }
 
-header nav .nav-tools .nav-static-links a:hover {
-  text-decoration: underline;
-}
-
 @media (min-width: 900px) {
   header nav .nav-tools .nav-static-links {
     display: flex;

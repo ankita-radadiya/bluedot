@@ -239,8 +239,8 @@ export default async function decorate(block) {
   const staticLinksFragment = document.createRange().createContextualFragment(`
     <div class="nav-static-links">
       <a href="${rootLink('/blog')}" class="nav-static-link nav-blog-link">Blog</a>
-      <a href="${rootLink('/dealer-signup')}" class="nav-static-link nav-dealer-signup-link">Dealer Signup</a>
-      <a href="${rootLink('/signin')}" class="nav-static-link nav-signin-link">Signin</a>
+      <a href="${rootLink('/customer/create')}" class="nav-static-link nav-dealer-signup-link">Dealer Signup</a>
+      <a href="${rootLink('/customer/login')}" class="nav-static-link nav-signin-link">Signin</a>
     </div>
   `);
 

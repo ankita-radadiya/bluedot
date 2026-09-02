@@ -3,3 +3,23 @@ main .commerce-create-account-container {
     margin: 40px auto;
     width: 100%;
 }
+
+.auth-sign-up-form__title {
+    justify-content: center;
+}
+
+.auth-sign-up-form-buttons--signin {
+    color: #285227;
+}
+
+.auth-sign-up-form-buttons--signin:hover {
+    color: #3e7f3c;
+    text-decoration: none;
+}
+
+.auth-sign-up-form-buttons {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 2rem;
+}
