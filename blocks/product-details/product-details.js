@@ -17,7 +17,6 @@ import { WishlistAlert } from '@dropins/storefront-wishlist/containers/WishlistA
 // Containers
 import ProductHeader from '@dropins/storefront-pdp/containers/ProductHeader.js';
 import ProductPrice from '@dropins/storefront-pdp/containers/ProductPrice.js';
-import ProductShortDescription from '@dropins/storefront-pdp/containers/ProductShortDescription.js';
 import ProductOptions from '@dropins/storefront-pdp/containers/ProductOptions.js';
 import ProductQuantity from '@dropins/storefront-pdp/containers/ProductQuantity.js';
 import ProductDescription from '@dropins/storefront-pdp/containers/ProductDescription.js';
@@ -94,7 +93,7 @@ function renderSkuDetails(product, targetContainer) {
   skuContainer.className = 'pdp-sku-info';
 
   const rawSku = product?.sku || '';
-  const seriesName = product?.series || 'SERIES';
+  const seriesName = product?.series || 'SKU';
 
   skuContainer.innerHTML = `
     <strong class="pdp-sku-label">${seriesName}:</strong>
@@ -118,38 +117,42 @@ function renderStockStatus(product, targetContainer) {
   targetContainer.appendChild(statusContainer);
 }
 
-function renderCompareButton(product, targetContainer) {
+function renderCompareButton(product, targetContainer, labels = {}) {
   targetContainer.innerHTML = '';
   const compareBtnContainer = document.createElement('div');
   compareBtnContainer.className = 'pdp-compare-wrapper';
 
-  UI.render(Button, {
-    children: 'Compare',
-    variant: 'secondary',
-    onClick: () => {
-      const currentProduct = product || pdpApi.getProductConfigurationValues();
-      const finalPrice = currentProduct?.priceRange?.minimum?.final?.amount?.value
-        || currentProduct?.price?.final?.amount?.value
-        || 0;
+  const compareBtn = document.createElement('button');
+  compareBtn.className = 'dropin-button pdp-compare-btn';
+  compareBtn.type = 'button';
+  compareBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+    <span>${labels.Global?.Compare || 'Add To Compare'}</span>
+  `;
+  compareBtn.addEventListener('click', () => {
+    const currentProduct = product || pdpApi.getProductConfigurationValues();
+    const finalPrice = currentProduct?.priceRange?.minimum?.final?.amount?.value
+      || currentProduct?.price?.final?.amount?.value
+      || 0;
 
-      CompareService.addProduct({
-        sku: currentProduct?.sku,
-        name: currentProduct?.name,
-        image: currentProduct?.images?.[0]?.url || currentProduct?.image?.url || '',
-        urlKey: currentProduct?.urlKey,
-        price: finalPrice,
-      });
+    CompareService.addProduct({
+      sku: currentProduct?.sku,
+      name: currentProduct?.name,
+      image: currentProduct?.images?.[0]?.url || currentProduct?.image?.url || '',
+      urlKey: currentProduct?.urlKey,
+      price: finalPrice,
+    });
 
-      events.emit('compare/update');
-      showNotification({
-        type: 'success',
-        message: `${currentProduct?.name || 'Product'} has been added to compare list.`,
-        linkText: 'View Compare',
-        linkUrl: rootLink('/compare'),
-      });
-    },
-  })(compareBtnContainer);
+    events.emit('compare/update');
+    showNotification({
+      type: 'success',
+      message: `${currentProduct?.name || 'Product'} has been added to compare list.`,
+      linkText: 'View Compare',
+      linkUrl: rootLink('/compare'),
+    });
+  });
 
+  compareBtnContainer.appendChild(compareBtn);
   targetContainer.appendChild(compareBtnContainer);
 }
 
@@ -191,17 +194,19 @@ export default async function decorate(block) {
           <div class="product-details__sku"></div>
           <div class="product-details__stock"></div>
         </div>
+        <div class="product-details__quantity-container">
+          <p class="quantity-title">Qty</p>
+          <div class="product-details__quantity"></div>
+        </div>
         <div class="product-details__price"></div>
-        <div class="product-details__short-description"></div>
         <div class="product-details__gift-card-options"></div>
         <div class="product-details__configuration">
           <div class="product-details__options"></div>
           <div class="product-details__buttons">
-            <div class="product-details__quantity"></div>
             <div class="product-details__buttons__add-to-cart"></div>
             <div class="product-details__button__action-buttons">
-               <div class="product-details__buttons__compare"></div>
-                <div class="product-details__buttons__add-to-wishlist"></div>
+              <div class="product-details__buttons__add-to-wishlist"></div>
+              <div class="product-details__buttons__compare"></div>
             </div>
           </div>
         </div>
@@ -274,7 +279,6 @@ export default async function decorate(block) {
   const $sku = fragment.querySelector('.product-details__sku');
   const $stock = fragment.querySelector('.product-details__stock');
   const $price = fragment.querySelector('.product-details__price');
-  const $shortDescription = fragment.querySelector('.product-details__short-description');
   const $options = fragment.querySelector('.product-details__options');
   const $quantity = fragment.querySelector('.product-details__quantity');
   const $giftCardOptions = fragment.querySelector('.product-details__gift-card-options');
@@ -336,7 +340,7 @@ export default async function decorate(block) {
     safeRenderBreadcrumbs(globalBreadcrumbsContainer, categoryData, labels);
     renderSkuDetails(product, $sku);
     renderStockStatus(product, $stock);
-    renderCompareButton(product, $compareBtn);
+    renderCompareButton(product, $compareBtn, labels);
   }
 
   let inlineAlert = null;
@@ -379,7 +383,6 @@ export default async function decorate(block) {
 
     pdpRendered.render(ProductHeader, {})($header),
     pdpRendered.render(ProductPrice, {})($price),
-    pdpRendered.render(ProductShortDescription, {})($shortDescription),
 
     pdpRendered.render(ProductOptions, {
       hideSelectedValue: false,
@@ -402,6 +405,8 @@ export default async function decorate(block) {
 
     wishlistRender.render(WishlistToggle, {
       product,
+      labelToWishlist: labels.Global?.AddToWishlist || 'Add to Wish list',
+      labelWishlisted: labels.Global?.Wishlisted || 'Add to Wish list',
     })($wishlistToggleBtn),
   ]);
 
@@ -499,7 +504,7 @@ export default async function decorate(block) {
     safeRenderBreadcrumbs(globalBreadcrumbsContainer, categoryData, labels);
     renderSkuDetails(data, $sku);
     renderStockStatus(data, $stock);
-    renderCompareButton(data, $compareBtn);
+    renderCompareButton(data, $compareBtn, labels);
   }, { eager: true });
 
   events.on('pdp/valid', (valid) => {
