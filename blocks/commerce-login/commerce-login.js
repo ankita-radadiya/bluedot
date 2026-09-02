@@ -17,6 +17,14 @@ export default async function decorate(block) {
     await authRenderer.render(SignIn, {
       routeForgotPassword: () => rootLink(CUSTOMER_FORGOTPASSWORD_PATH),
       routeRedirectOnSignIn: () => rootLink(CUSTOMER_ACCOUNT_PATH),
+      slots: {
+        Title: (ctx) => {
+          const subtitle = document.createElement('p');
+          subtitle.className = 'commerce-login-subtitle';
+          subtitle.textContent = 'If you have an account, sign in with your email address.';
+          ctx.appendChild(subtitle);
+        },
+      },
     })(block);
   }
 }
