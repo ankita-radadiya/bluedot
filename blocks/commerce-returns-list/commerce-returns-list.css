@@ -1,1 +1,56 @@
-/* stylelint-disable no-empty-source */
+
+.order-returns-list {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.commerce-orders-list .order-returns-list-content__actions {
+  margin-top: 16px;
+  text-align: left;
+}
+
+.my-account-page .order-returns-list-content .order-returns-list-content__actions {
+    position: absolute;
+    top: 2px;
+    left: 180px;
+    margin: 0;
+    width: auto;
+}
+
+
+.my-account-page .order-returns-list-content__actions .dropin-card  {
+    border: 0;
+    background-color: transparent;
+}
+
+.my-account-page .order-returns-list-content__actions .dropin-card__content {
+    padding: 0;
+}
+
+.my-account-page .order-returns-list-content__card .order-returns-list-content__card-wrapper {
+    height: auto;
+    justify-content: flex-start;
+    color: #384c60;
+}
+
+.my-account-page .order-returns-list-content__actions .order-returns-list-content__card-wrapper p {
+    font-size: 1.4rem;
+    line-height: 3rem;
+    letter-spacing: 0;
+    font-weight: 400;
+    margin: 0;
+}
+
+.my-account-page .order-returns-list-content__actions .order-returns-list-content__card-wrapper svg {
+    width: 26px;
+    height: auto;
+}
+
+.order-returns-list-content .order-empty-list + .order-returns-list-content__actions {
+    display: none;
+}
+
+.returns .order-returns-list .dropin-header-container {
+    display: none;
+}

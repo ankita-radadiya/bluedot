@@ -182,7 +182,6 @@ export default async function decorate(block) {
   let isOutOfStock = false;
 
   const fragment = document.createRange().createContextualFragment(`
-    <div class="product-details__alert"></div>
     <div class="product-details__wrapper">
       <div class="product-details__left-column">
         <div class="product-details__gallery desktop-gallery"></div>
