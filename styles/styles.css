@@ -153,8 +153,8 @@ body {
   color: var(--color-neutral-800);
   display: flex;
   flex-direction: column;
-  font-size: 1.6rem;
   font: var(--type-body-1-default-font);
+  font-size: 1.6rem;
   letter-spacing: var(--type-body-1-default-letter-spacing);
   margin: 0;
   min-height: 100vh;
@@ -579,51 +579,52 @@ main .section[data-margin="xxhuge"] {
 
 /* Layout: Columns */
 body.columns main {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 1264px;
-  margin: 0 auto;
-  padding: var(--spacing-large) var(--spacing-small);
-  box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 30px auto 40px;
+    max-width: var(--container-width);
+    padding: 0 var(--container-spacing-desktop);
+    width: 100%;
 }
 
-body.columns main > .section {
-  flex: 1;
-  flex-basis: 100%;
-  max-width: unset;
-  margin: unset;
-  padding: calc(var(--grid-4-gutters) / 2);
-  box-sizing: border-box;
+
+body.columns main>.section>div {
+    max-width: unset;
+    padding: unset;
 }
 
-body.columns main > .section:first-child {
-  padding-inline-start: 0;
-  padding-block-start: 0;
+body.columns main>.section>div:not(:last-child) {
+    margin-bottom: var(--gap, unset);
 }
 
-body.columns main > .section:last-child {
-  padding-inline-end: 0;
-  padding-block-end: 0;
+body.columns main>.section:empty {
+    display: none;
 }
 
-body.columns main > .section > div {
-  max-width: unset;
-  padding: unset;
+@media only screen and (min-width: 768px) {
+    body.columns main .commerce-account-sidebar-container {
+        padding: 0;
+        width: 28%;
+        margin: 0;
+    }
+
+    body.columns main .account-main-container {
+        padding: 0;
+        width: calc(73% - 40px);
+        margin: 0;
+    }
 }
 
-body.columns main > .section > div:not(:last-child) {
-  margin-bottom: var(--gap, unset);
-}
+@media only screen and (min-width: 1024px) {
+    body.columns main .commerce-account-sidebar-container {
+        width: 360px;
+    }
 
-body.columns main > .section:empty {
-  display: none;
-}
-
-@media (min-width: 600px) {
-  body.columns main {
-    padding: var(--spacing-large) var(--spacing-big);
-  }
+    body.columns main .account-main-container {
+        padding: 0;
+        width: calc(100% - 410px);
+    }
 }
 
 .dropin-product-item-card {
@@ -633,11 +634,6 @@ body.columns main > .section:empty {
 @media (min-width: 900px) {
   body.columns main {
     flex-flow: row wrap;
-  }
-
-  body.columns main > .section {
-    flex: 1;
-    flex-basis: var(--column-width, auto);
   }
 }
 
@@ -812,7 +808,7 @@ main[hidden] {
 
 @media only screen and (min-width: 1440px) {
     .breadcrumbs {
-        margin: 10px auto 0;
+        margin: 10px 0 0;
     }
 
     .breadcrumbs-container,
