@@ -403,6 +403,8 @@ export default async function decorate(block) {
               // Render Icon
               wishlistRender.render(WishlistToggle, {
                 product: ctx.item,
+                labelToWishlist: labels.Global?.AddToWishlist || 'Add to Wishlist',
+                labelWishlisted: labels.Global?.Wishlisted || 'Add to Wishlist',
               })($wishlistToggle);
 
               // Append to Cart Item

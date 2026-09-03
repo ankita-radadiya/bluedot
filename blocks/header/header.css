@@ -430,6 +430,15 @@ header nav .nav-tools .nav-static-links a {
     transition: transform 0.3s ease;
 }
 
+header .nav-search-panel .search-bar-result .dropin-product-item-card img,
+header .nav-search-panel .search-bar-result .product-discovery-product-item__image {
+  width: 60px;
+  height: 60px;
+  max-width: 60px;
+  max-height: 60px;
+  object-fit: contain;
+}
+
 .nav-sections .submenu-wrapper .promo-image:hover img {
     transform: scale(1.03);
 }
@@ -617,14 +626,6 @@ header .nav-search-panel .search-bar-result .dropin-product-item-card [data-slot
   height: 60px;
 }
 
-header .nav-search-panel .search-bar-result .dropin-product-item-card img,
-header .nav-search-panel .search-bar-result .product-discovery-product-item__image {
-  width: 60px;
-  height: 60px;
-  max-width: 60px;
-  max-height: 60px;
-  object-fit: contain;
-}
 
 header .nav-search-panel .search-bar-result .dropin-product-item-card__content {
   padding-top: 0;
