@@ -107,8 +107,6 @@
   box-shadow: 0 6px 16px rgb(0 0 0 / 16%);
 }
 
-.product-recommendations .recommendations-carousel__content .dropin-product-item-card__image,
-.product-recommendations .recommendations-product-list__content .dropin-product-item-card__image,
 .product-recommendations .recommendations-carousel__content .dropin-product-item-card__image-container,
 .product-recommendations .recommendations-product-list__content .dropin-product-item-card__image-container {
   margin: 16px 16px 0;
