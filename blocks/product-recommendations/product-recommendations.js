@@ -30,6 +30,121 @@ import '../../scripts/initializers/wishlist.js';
 
 const isMobile = window.matchMedia('only screen and (max-width: 900px)').matches;
 
+const SLIDER_ARROW_SVG = {
+  prev: '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>',
+  next: '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M9 6 7.59 7.41 12.17 12l-4.58 4.59L9 18l6-6z"/></svg>',
+};
+
+function createSliderControls() {
+  const container = document.createElement('div');
+  container.className = 'recommendations-slider-container';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'recommendations-slider-arrow recommendations-slider-prev';
+  prevBtn.setAttribute('aria-label', 'Previous products');
+  prevBtn.innerHTML = SLIDER_ARROW_SVG.prev;
+
+  const mount = document.createElement('div');
+  mount.className = 'recommendations__mount';
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'recommendations-slider-arrow recommendations-slider-next';
+  nextBtn.setAttribute('aria-label', 'Next products');
+  nextBtn.innerHTML = SLIDER_ARROW_SVG.next;
+
+  container.append(prevBtn, mount, nextBtn);
+  return {
+    container, mount, prevBtn, nextBtn,
+  };
+}
+
+function getRecommendationsTrack(mount) {
+  return mount.querySelector('.recommendations-carousel__content')
+    || mount.querySelector('.recommendations-product-list__content .dropin-content-grid__content')
+    || mount.querySelector('.recommendations-product-list__content');
+}
+
+function setupRecommendationsSlider(mount, prevBtn, nextBtn) {
+  const track = getRecommendationsTrack(mount);
+  if (!track) {
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    return null;
+  }
+
+  const hasProducts = track.querySelector('[data-testid="recommendations-product-item-card"]')
+    || track.querySelector('.dropin-product-item-card');
+  if (!hasProducts) {
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    return null;
+  }
+
+  const getMaxScroll = () => Math.max(0, track.scrollWidth - track.clientWidth);
+
+  const updateButtons = () => {
+    requestAnimationFrame(() => {
+      const maxScroll = getMaxScroll();
+      const atStart = track.scrollLeft <= 0;
+      const atEnd = track.scrollLeft >= Math.max(0, maxScroll - 1);
+      prevBtn.disabled = atStart;
+      nextBtn.disabled = atEnd;
+    });
+  };
+
+  const scrollStep = () => Math.max(track.clientWidth * 0.75, 280);
+
+  const controller = mount.recommendationsSliderController;
+  if (controller) {
+    controller.cleanup();
+  }
+
+  const onScroll = () => updateButtons();
+  const onResize = () => updateButtons();
+  const onPrevClick = () => {
+    track.scrollBy({ left: -scrollStep(), behavior: 'smooth' });
+  };
+  const onNextClick = () => {
+    track.scrollBy({ left: scrollStep(), behavior: 'smooth' });
+  };
+
+  prevBtn.addEventListener('click', onPrevClick);
+  nextBtn.addEventListener('click', onNextClick);
+  track.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onResize);
+
+  let resizeObserver;
+  if ('ResizeObserver' in window) {
+    resizeObserver = new ResizeObserver(updateButtons);
+    resizeObserver.observe(track);
+  }
+
+  track.querySelectorAll('img').forEach((img) => {
+    if (img.complete) {
+      updateButtons();
+    } else {
+      img.addEventListener('load', updateButtons, { once: true });
+    }
+  });
+
+  const cleanup = () => {
+    prevBtn.removeEventListener('click', onPrevClick);
+    nextBtn.removeEventListener('click', onNextClick);
+    track.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onResize);
+    resizeObserver?.disconnect();
+  };
+
+  mount.recommendationsSliderController = { cleanup, updateButtons };
+
+  requestAnimationFrame(updateButtons);
+  window.setTimeout(updateButtons, 100);
+
+  return mount.recommendationsSliderController;
+}
+
 /**
  * Validates and returns a product view history entry if valid
  * @param {Object} entry - The history entry to validate
@@ -129,16 +244,25 @@ export default async function decorate(block) {
   const { currentsku, currentprice, recid } = readBlockConfig(block);
 
   // Layout
-  const fragment = document.createRange().createContextualFragment(`
-    <div class="recommendations__wrapper">
-      <div class="recommendations__list"></div>
-    </div>
-  `);
+  const $wrapper = document.createElement('div');
+  $wrapper.className = 'recommendations__wrapper';
+  const {
+    container: sliderContainer,
+    mount: $mount,
+    prevBtn,
+    nextBtn,
+  } = createSliderControls();
+  $wrapper.appendChild(sliderContainer);
+  block.appendChild($wrapper);
 
-  const $list = fragment.querySelector('.recommendations__list');
-  const $wrapper = fragment.querySelector('.recommendations__wrapper');
-
-  block.appendChild(fragment);
+  let sliderObserverTimeout;
+  const sliderObserver = new MutationObserver(() => {
+    window.clearTimeout(sliderObserverTimeout);
+    sliderObserverTimeout = window.setTimeout(() => {
+      setupRecommendationsSlider($mount, prevBtn, nextBtn);
+    }, 100);
+  });
+  sliderObserver.observe($mount, { childList: true, subtree: true });
 
   let visibility = !isMobile;
   let isLoading = false;
@@ -169,6 +293,7 @@ export default async function decorate(block) {
 
     // Clear container if reloading
     if (forceReload) {
+      container.recommendationsSliderController?.cleanup();
       container.innerHTML = '';
     }
 
@@ -288,23 +413,47 @@ export default async function decorate(block) {
 
             Thumbnail: (ctx) => {
               const { item, defaultImageProps } = ctx;
+              const rawSrc = defaultImageProps?.src || item?.images?.[0]?.url || '';
+              const src = rawSrc.startsWith('//') ? `https:${rawSrc}` : rawSrc;
+              const width = Number(defaultImageProps?.width) || 300;
+              const height = Number(defaultImageProps?.height) || width;
+              // Include height on params. AEM Assets image-param keys treat a
+              // missing height as Math.floor(undefined) → height=NaN, and the
+              // Commerce media CDN then returns a 3×3 broken thumbnail.
+              const imageProps = {
+                ...defaultImageProps,
+                ...(src ? { src } : {}),
+                params: { width, height },
+              };
               const wrapper = document.createElement('a');
               wrapper.href = createProductLink(item);
 
-              tryRenderAemAssetsImage(ctx, {
-                alias: item.sku,
-                imageProps: defaultImageProps,
-                wrapper,
-
-                params: {
-                  width: defaultImageProps.width,
-                  height: defaultImageProps.height,
-                },
-              });
+              try {
+                tryRenderAemAssetsImage(ctx, {
+                  alias: item.sku,
+                  imageProps,
+                  wrapper,
+                  params: { width, height },
+                });
+              } catch (error) {
+                if (!src) {
+                  console.error('Recommendations thumbnail is missing an image source', error);
+                  return;
+                }
+                const img = document.createElement('img');
+                img.src = src;
+                img.alt = defaultImageProps?.alt || item?.name || '';
+                img.width = width;
+                img.height = height;
+                wrapper.appendChild(img);
+                ctx.replaceWith(wrapper);
+              }
             },
           },
-        })($wrapper),
+        })($mount),
       ]);
+
+      setupRecommendationsSlider($mount, prevBtn, nextBtn);
     } finally {
       isLoading = false;
     }
@@ -318,7 +467,7 @@ export default async function decorate(block) {
     }
 
     loadTimeout = setTimeout(() => {
-      loadRecommendation(context, visibility, $list, forceReload);
+      loadRecommendation(context, visibility, $mount, forceReload);
     }, 300); // 300ms debounce
   }
 
@@ -347,7 +496,7 @@ export default async function decorate(block) {
     previousContext = { ...context };
 
     // Load or reload recommendations based on whether significant changes occurred
-    if (hasSignificantChanges && $list.children.length > 0) {
+    if (hasSignificantChanges && $mount.children.length > 0) {
       // Force reload if recommendations already exist and context changed significantly
       debouncedLoadRecommendation(true);
     } else {

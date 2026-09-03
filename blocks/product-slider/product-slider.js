@@ -9,9 +9,10 @@ const PRODUCT_VIEW_FIELDS = `
   sku
   name
   urlKey
-  images(roles: ["image"]) {
+  images {
     url
     label
+    roles
   }
   ... on SimpleProductView {
     price {
@@ -37,6 +38,20 @@ const PRODUCT_VIEW_FIELDS = `
   }
 `;
 
+function resolveImageUrl(url = '') {
+  if (!url) return '';
+  if (url.startsWith('//')) return `https:${url}`;
+  return url;
+}
+
+function pickProductImage(images = []) {
+  const preferred = images.find((image) => image.roles?.includes('image'))
+    || images.find((image) => image.roles?.includes('small_image'))
+    || images.find((image) => image.roles?.includes('thumbnail'))
+    || images[0];
+  return resolveImageUrl(preferred?.url || '');
+}
+
 function normalizeProduct(product) {
   const priceData = product.price || product.priceRange?.minimum || {};
   const finalPrice = priceData?.final?.amount || { value: 0, currency: 'USD' };
@@ -45,7 +60,7 @@ function normalizeProduct(product) {
     sku: product.sku,
     name: product.name,
     urlKey: product.urlKey || product.sku,
-    image: product.images?.[0]?.url || '',
+    image: pickProductImage(product.images),
     price: finalPrice.value,
     currency: finalPrice.currency || 'USD',
     // Configurable products need option selection on the product page
@@ -195,13 +210,15 @@ function createProductCard(product) {
   const imageWrapper = document.createElement('div');
   imageWrapper.className = 'product-slider-image';
 
-  const img = document.createElement('img');
-  img.src = product.image || 'https://placehold.co/300x300?text=Product';
-  img.alt = product.name || 'Product';
-  img.loading = 'lazy';
-  img.width = 300;
-  img.height = 300;
-  imageWrapper.appendChild(img);
+  if (product.image) {
+    const img = document.createElement('img');
+    img.src = product.image;
+    img.alt = product.name || 'Product';
+    img.loading = 'lazy';
+    img.width = 300;
+    img.height = 300;
+    imageWrapper.appendChild(img);
+  }
 
   const info = document.createElement('div');
   info.className = 'product-slider-info';

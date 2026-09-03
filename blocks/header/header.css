@@ -609,6 +609,23 @@ header .nav-search-panel .search-bar-result .dropin-product-item-card {
   grid-template-columns: 60px 1fr;
 }
 
+header .nav-search-panel .search-bar-result .dropin-product-item-card [data-slot="ProductImage"],
+header .nav-search-panel .search-bar-result .dropin-product-item-card [data-slot-html-element],
+header .nav-search-panel .search-bar-result .dropin-product-item-card [data-slot="ProductImage"] a {
+  display: block;
+  width: 60px;
+  height: 60px;
+}
+
+header .nav-search-panel .search-bar-result .dropin-product-item-card img,
+header .nav-search-panel .search-bar-result .product-discovery-product-item__image {
+  width: 60px;
+  height: 60px;
+  max-width: 60px;
+  max-height: 60px;
+  object-fit: contain;
+}
+
 header .nav-search-panel .search-bar-result .dropin-product-item-card__content {
   padding-top: 0;
 }

@@ -282,18 +282,41 @@ export default async function decorate(block) {
           slots: {
             ProductImage: (ctx) => {
               const { product, defaultImageProps } = ctx;
+              const rawSrc = defaultImageProps?.src || product?.images?.[0]?.url || '';
+              const src = rawSrc.startsWith('//') ? `https:${rawSrc}` : rawSrc;
+              const width = Number(defaultImageProps?.width) || 60;
+              const height = Number(defaultImageProps?.height) || width;
+              // Include height on params. AEM Assets image-param keys treat a
+              // missing height as Math.floor(undefined) → height=NaN, and the
+              // Commerce media CDN then returns a 3×3 broken thumbnail.
+              const imageProps = {
+                ...defaultImageProps,
+                ...(src ? { src } : {}),
+                params: { width, height },
+              };
               const anchorWrapper = document.createElement('a');
               anchorWrapper.href = getProductLink(product.urlKey, product.sku);
 
-              tryRenderAemAssetsImage(ctx, {
-                alias: product.sku,
-                imageProps: defaultImageProps,
-                wrapper: anchorWrapper,
-                params: {
-                  width: defaultImageProps.width,
-                  height: defaultImageProps.height,
-                },
-              });
+              try {
+                tryRenderAemAssetsImage(ctx, {
+                  alias: product.sku,
+                  imageProps,
+                  wrapper: anchorWrapper,
+                  params: { width, height },
+                });
+              } catch (error) {
+                if (!src) {
+                  console.error('Search autocomplete thumbnail is missing an image source', error);
+                  return;
+                }
+                const img = document.createElement('img');
+                img.src = src;
+                img.alt = defaultImageProps?.alt || product?.name || '';
+                img.width = width;
+                img.height = height;
+                anchorWrapper.appendChild(img);
+                ctx.replaceWith(anchorWrapper);
+              }
             },
             Footer: async (ctx) => {
               // View all results button
