@@ -130,18 +130,19 @@
     overflow: hidden;
 }
 
+.cart-cart-summary-table__item-image-wrapper [data-slot-html-element],
+.cart-cart-summary-table__item-image-wrapper a {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
 .cart-cart-summary-table__item-image-wrapper img,
 .cart-cart-summary-table__item-image-wrapper a img {
     width: 100%;
     height: 100%;
     object-fit: contain;
     display: block;
-}
-
-.cart-cart-summary-table__item-image-wrapper a {
-    display: block;
-    width: 100%;
-    height: 100%;
 }
 
 .cart-cart-summary-table__item-details {

@@ -121,20 +121,42 @@ export default async function decorate(block) {
       slots: {
         Thumbnail: (ctx) => {
           const { item, defaultImageProps } = ctx;
+          const src = defaultImageProps?.src || item?.image?.src;
+          const width = Number(defaultImageProps?.width) || 100;
+          const height = Number(defaultImageProps?.height) || width;
+          // Include height on params. AEM Assets image-param keys treat a
+          // missing height as Math.floor(undefined) → height=NaN, and the
+          // Commerce media CDN then returns a 3×3 broken thumbnail.
+          const imageProps = {
+            ...defaultImageProps,
+            ...(src ? { src } : {}),
+            params: { width, height },
+          };
           const anchorWrapper = document.createElement('a');
           anchorWrapper.href = createProductLink(item);
 
-          // anchorWrapper must be attached to ctx or the rendered <img> never
-          // reaches the DOM, even though tryRenderAemAssetsImage draws into it.
-          ctx.innerHTML = '';
-          ctx.appendChild(anchorWrapper);
-
-          tryRenderAemAssetsImage(ctx, {
-            alias: item.sku,
-            imageProps: defaultImageProps,
-            wrapper: anchorWrapper,
-            params: { width: defaultImageProps.width, height: defaultImageProps.height },
-          });
+          // Pass the link as `wrapper` only. ctx is a Slot context, not a DOM
+          // node, so appendChild here never mounts the rendered <img>.
+          try {
+            tryRenderAemAssetsImage(ctx, {
+              alias: item.sku,
+              imageProps,
+              wrapper: anchorWrapper,
+              params: { width, height },
+            });
+          } catch (error) {
+            if (!src) {
+              console.error('MiniCart thumbnail is missing an image source', error);
+              return;
+            }
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = defaultImageProps?.alt || item?.name || '';
+            img.width = width;
+            img.height = height;
+            anchorWrapper.appendChild(img);
+            ctx.replaceWith(anchorWrapper);
+          }
         },
 
         // MiniCart's supported slot is "ItemQuantity" — a slot literally named

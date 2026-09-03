@@ -523,15 +523,36 @@ export const renderCartSummaryList = async (container) => renderContainer(
         },
         Thumbnail: (ctx) => {
           const { item, defaultImageProps } = ctx;
-          tryRenderAemAssetsImage(ctx, {
-            alias: item.sku,
-            imageProps: defaultImageProps,
+          const src = defaultImageProps?.src || item?.image?.src;
+          const width = Number(defaultImageProps?.width) || 80;
+          const height = Number(defaultImageProps?.height) || width;
+          // Include height on params. AEM Assets image-param keys treat a
+          // missing height as Math.floor(undefined) → height=NaN, and the
+          // Commerce media CDN then returns a 3×3 broken thumbnail.
+          const imageProps = {
+            ...defaultImageProps,
+            ...(src ? { src } : {}),
+            params: { width, height },
+          };
 
-            params: {
-              width: defaultImageProps.width,
-              height: defaultImageProps.height,
-            },
-          });
+          try {
+            tryRenderAemAssetsImage(ctx, {
+              alias: item.sku,
+              imageProps,
+              params: { width, height },
+            });
+          } catch (error) {
+            if (!src) {
+              console.error('Checkout thumbnail is missing an image source', error);
+              return;
+            }
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = defaultImageProps?.alt || item?.name || '';
+            img.width = width;
+            img.height = height;
+            ctx.replaceWith(img);
+          }
         },
         Footer: renderCartGiftOptions,
       },

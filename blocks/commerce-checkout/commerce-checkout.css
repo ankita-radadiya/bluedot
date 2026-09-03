@@ -373,6 +373,22 @@
     padding: var(--spacing-medium);
 }
 
+.checkout__cart-summary .dropin-cart-item__image,
+.checkout__cart-summary .dropin-cart-item__image [data-slot-html-element],
+.checkout__cart-summary .dropin-cart-item__image a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+}
+
+.checkout__cart-summary .dropin-cart-item__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 /* Order Summary Coupon */
 .dropin-accordion-section__heading {
     margin: var(--spacing-medium) auto;
