@@ -996,5 +996,35 @@ export default async function decorate(block) {
     window.history.pushState({}, '', url.toString());
   }, { eager: false });
 
+  events.on('wishlist/alert', ({ action, item }) => {
+    const productName = item?.product?.name || 'Product';
+    const routeToWishlist = rootLink('/wishlist');
+    if (action === 'add') {
+      showNotification({
+        type: 'success',
+        message: `${productName} has been added to your Wish List.`,
+        linkText: 'View Wish List',
+        linkUrl: routeToWishlist,
+      });
+    } else if (action === 'remove') {
+      showNotification({
+        type: 'info',
+        message: `${productName} has been removed from your Wish List.`,
+        linkText: 'View Wish List',
+        linkUrl: routeToWishlist,
+      });
+    } else if (action === 'addError') {
+      showNotification({
+        type: 'error',
+        message: `Could not add ${productName} to your Wish List.`,
+      });
+    } else if (action === 'removeError') {
+      showNotification({
+        type: 'error',
+        message: `Could not remove ${productName} from your Wish List.`,
+      });
+    }
+  }, { eager: true });
+
   return Promise.resolve();
 }

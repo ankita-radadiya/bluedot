@@ -820,22 +820,22 @@ main[hidden] {
 
 /* Global Notification Banner below Header */
 .global-notification-container {
-    width: 100%;
-    max-width: 1614px;
     margin: 15px auto 0;
-    padding: 0 var(--spacing-theme-l, 15px);
-    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
-    z-index: 1000;
-}
+    z-index: 2;
+    width: 100%;
+    max-width: var(--container-width);
+    padding-left: var(--container-spacing-desktop);
+    padding-right: var(--container-spacing-desktop);
+    margin-left: auto;
+    margin-right: auto;
+  }
 
 .global-notification-toast {
     pointer-events: auto;
     min-width: 300px;
-    max-width: 90%;
-    width: max-content;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -886,7 +886,7 @@ main[hidden] {
 .global-notification-content {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 12px 20px;
     font-size: 1.4rem;
     font-weight: 500;
 }
@@ -898,8 +898,9 @@ main[hidden] {
 .global-notification-link {
     color: #fff !important;
     text-decoration: underline !important;
-    font-weight: 700;
+    font-weight: 400 !important;
     margin-left: 5px;
+    min-width: max-content;
 }
 
 .global-notification-link:hover {

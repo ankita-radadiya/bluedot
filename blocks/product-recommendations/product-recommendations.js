@@ -21,8 +21,9 @@ import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js
 // Block-level
 import { readBlockConfig } from '../../scripts/aem.js';
 import {
-  fetchPlaceholders, getProductLink, getStoreIdentifier,
+  fetchPlaceholders, getProductLink, getStoreIdentifier, rootLink,
 } from '../../scripts/commerce.js';
+import { showNotification } from '../../scripts/components/notification.js';
 
 // Initializers
 import '../../scripts/initializers/recommendations.js';
@@ -231,6 +232,36 @@ export function getPurchaseHistory() {
   }
 }
 
+events.on('wishlist/alert', ({ action, item }) => {
+  const productName = item?.product?.name || 'Product';
+  const routeToWishlist = rootLink('/wishlist');
+  if (action === 'add') {
+    showNotification({
+      type: 'success',
+      message: `${productName} has been added to your Wish List.`,
+      linkText: 'View Wish List',
+      linkUrl: routeToWishlist,
+    });
+  } else if (action === 'remove') {
+    showNotification({
+      type: 'info',
+      message: `${productName} has been removed from your Wish List.`,
+      linkText: 'View Wish List',
+      linkUrl: routeToWishlist,
+    });
+  } else if (action === 'addError') {
+    showNotification({
+      type: 'error',
+      message: `Could not add ${productName} to your Wish List.`,
+    });
+  } else if (action === 'removeError') {
+    showNotification({
+      type: 'error',
+      message: `Could not remove ${productName} from your Wish List.`,
+    });
+  }
+}, { eager: true });
+
 export default async function decorate(block) {
   const labels = await fetchPlaceholders();
 
@@ -360,13 +391,27 @@ export default async function decorate(block) {
                   children: labels.Global?.AddProductToCart,
                   icon: Icon({ source: 'Cart' }),
                   onClick: ctx.item.inStock
-                    ? (event) => {
-                      cartApi.addProductsToCart([
-                        { sku: ctx.item.sku, quantity: 1 },
-                      ]);
+                    ? async (event) => {
                       // Prevent the click event from bubbling up to the parent span
                       // to avoid triggering the recs-item-click event
                       event.stopPropagation();
+                      try {
+                        await cartApi.addProductsToCart([
+                          { sku: ctx.item.sku, quantity: 1 },
+                        ]);
+                        showNotification({
+                          type: 'success',
+                          message: `${ctx.item.name || 'Product'} has been added to your cart.`,
+                          linkText: 'View Cart',
+                          linkUrl: rootLink('/cart'),
+                        });
+                      } catch (error) {
+                        console.error('Error adding product to cart:', error);
+                        showNotification({
+                          type: 'error',
+                          message: `Could not add ${ctx.item.name || 'Product'} to cart.`,
+                        });
+                      }
                       // Publish ACDL event for add to cart click
                       const recommendationUnit = recommendationsData?.find(
                         (unit) => unit.items?.some(

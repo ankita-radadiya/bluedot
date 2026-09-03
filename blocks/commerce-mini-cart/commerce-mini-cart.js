@@ -13,6 +13,7 @@ import { h } from '@dropins/tools/preact.js';
 
 import createModal from '../modal/modal.js';
 import createMiniPDP from '../../scripts/components/commerce-mini-pdp/commerce-mini-pdp.js';
+import { showNotification } from '../../scripts/components/notification.js';
 
 import '../../scripts/initializers/cart.js';
 import { readBlockConfig } from '../../scripts/aem.js';
@@ -35,6 +36,8 @@ export default async function decorate(block) {
   const MESSAGES = {
     ADDED: placeholders?.Global?.MiniCartAddedMessage,
     UPDATED: placeholders?.Global?.MiniCartUpdatedMessage,
+    REMOVED: placeholders?.Global?.MiniCartRemovedMessage
+      || placeholders?.Global?.CartItemRemovedMessage,
   };
 
   let currentModal = null;
@@ -64,7 +67,7 @@ export default async function decorate(block) {
         cartItem,
         async () => {
           const productName = cartItem.name || cartItem.product?.name
-           || placeholders?.Global?.CartUpdatedProductName;
+            || placeholders?.Global?.CartUpdatedProductName;
           const message = placeholders?.Global?.CartUpdatedProductMessage?.replace('{product}', productName);
 
           const cartNotification = document.querySelector('.cart__notification');
@@ -105,6 +108,23 @@ export default async function decorate(block) {
 
   events.on('cart/product/added', () => showMessage(MESSAGES.ADDED), { eager: true });
   events.on('cart/product/updated', () => showMessage(MESSAGES.UPDATED), { eager: true });
+  events.on('cart/product/removed', (data) => {
+    const productName = data?.item?.name || data?.item?.product?.name;
+    let removeMsg;
+    if (productName) {
+      removeMsg = placeholders?.Global?.CartRemovedProductMessage?.replace('{product}', productName)
+        || MESSAGES.REMOVED?.replace('{product}', productName)
+        || `${productName} was removed from your cart.`;
+    } else {
+      removeMsg = MESSAGES.REMOVED || 'Item has been removed from your cart.';
+    }
+
+    showMessage(removeMsg);
+    showNotification({
+      type: 'warning',
+      message: removeMsg,
+    });
+  }, { eager: true });
 
   const createProductLink = (product) => getProductLink(product.url.urlKey, product.topLevelSku);
 
@@ -218,10 +238,6 @@ export default async function decorate(block) {
 
         ItemRemoveAction: (ctx) => {
           const { item } = ctx;
-          const originalRemoveBtn = ctx.querySelector('.dropin-cart-item__remove') || ctx.firstChild;
-
-          const actionContainer = document.createElement('div');
-          actionContainer.className = 'minicart-item-actions-row';
 
           if (enableUpdatingProduct === 'true') {
             const editBtn = document.createElement('button');
@@ -235,15 +251,9 @@ export default async function decorate(block) {
               onClick: () => handleEditButtonClick(item),
             })(editBtn);
 
-            actionContainer.appendChild(editBtn);
+            // Prepend the edit button; the dropin's default remove button stays
+            ctx.prependChild(editBtn);
           }
-
-          if (originalRemoveBtn) {
-            actionContainer.appendChild(originalRemoveBtn);
-          }
-
-          ctx.innerHTML = '';
-          ctx.appendChild(actionContainer);
         },
       },
     })(block);

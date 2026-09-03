@@ -1,18 +1,27 @@
 /* Card Container & Top Caret Arrow */
 header nav .minicart-panel {
-    display: none;
+  display: none;
 }
 
 header nav .minicart-panel.nav-tools-panel--show {
-    display: block;
+  display: block;
 }
 
 .dropin-cart-list__wrapper {
   gap: 2rem;
 }
 
-.dropin-cart-item__title, .dropin-cart-item__sku, .dropin-cart-item__attributes, .dropin-cart-item__configurations, .dropin-cart-item__price, .dropin-cart-item__total, .dropin-cart-item__warning, .dropin-cart-item__alert, .dropin-cart-item__quantity, .dropin-cart-item__footer {
-    grid-column: 2 / 2;
+.dropin-cart-item__title,
+.dropin-cart-item__sku,
+.dropin-cart-item__attributes,
+.dropin-cart-item__configurations,
+.dropin-cart-item__price,
+.dropin-cart-item__total,
+.dropin-cart-item__warning,
+.dropin-cart-item__alert,
+.dropin-cart-item__quantity,
+.dropin-cart-item__footer {
+  grid-column: 2 / 2;
 }
 
 .cart-mini-cart .dropin-cart-item__attributes {
@@ -114,6 +123,21 @@ header nav .minicart-panel.nav-tools-panel--show {
   display: contents;
 }
 
+.cart-mini-cart__products .dropin-cart-list__item [data-slot="ItemRemoveAction"] {
+  display: flex;
+}
+
+.minicart-edit-btn .dropin-iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-pdp__wrapper .dropin-incrementer__content {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
 /* Thumbnail */
 .dropin-cart-item__image {
   grid-column: 1;
@@ -164,7 +188,7 @@ header nav .minicart-panel.nav-tools-panel--show {
 }
 
 .cart-cart-summary-list__item-title a:hover {
-    text-decoration: none;
+  text-decoration: none;
 }
 
 .minicart-wrapper .dropin-cart-item__sku,
@@ -207,7 +231,8 @@ header nav .minicart-panel.nav-tools-panel--show {
   gap: 16px;
 }
 
-.minicart-wrapper .dropin-incrementer .dropin-incrementer__content, .minicart-qty-pill {
+.minicart-wrapper .dropin-incrementer .dropin-incrementer__content,
+.minicart-qty-pill {
   height: auto;
   padding: 2px 5px;
 }
@@ -256,7 +281,7 @@ div[data-slot="ItemRemoveAction"] {
 }
 
 .dropin-cart-item__remove {
-    position: inherit;
+  position: inherit;
 }
 
 .minicart-action-btn,
@@ -279,7 +304,7 @@ div[data-slot="ItemRemoveAction"] {
 }
 
 .cart-mini-cart__products {
-    padding-bottom: 0;
+  padding-bottom: 0;
 }
 
 /* Subtotal & Bottom Action Button */
