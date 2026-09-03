@@ -1,8 +1,11 @@
+import { events } from '@dropins/tools/event-bus.js';
 import { readBlockConfig } from '../../scripts/aem.js';
 import {
   CS_FETCH_GRAPHQL,
   getProductLink,
+  rootLink,
 } from '../../scripts/commerce.js';
+import { showNotification } from '../../scripts/components/notification.js';
 
 const PRODUCT_VIEW_FIELDS = `
   __typename
@@ -167,9 +170,19 @@ async function addToCart(product, button) {
     const cartApi = await import('@dropins/storefront-cart/api.js');
     await cartApi.addProductsToCart([{ sku: product.sku, quantity: 1 }]);
     button.textContent = 'Added!';
+    showNotification({
+      type: 'success',
+      message: `${product.name || 'Product'} has been added to your cart.`,
+      linkText: 'View Cart',
+      linkUrl: rootLink('/cart'),
+    });
   } catch (error) {
     console.error('Error adding product to cart:', error);
     button.textContent = 'Try again';
+    showNotification({
+      type: 'error',
+      message: `Could not add ${product.name || 'Product'} to cart.`,
+    });
   } finally {
     window.setTimeout(() => {
       button.textContent = originalLabel;
@@ -187,15 +200,46 @@ async function addToWishlist(product, button) {
     const { addProductsToWishlist } = await import('@dropins/storefront-wishlist/api.js');
     await addProductsToWishlist([{ sku: product.sku, quantity: 1 }]);
     button.textContent = 'Added To Wishlist';
+    showNotification({
+      type: 'success',
+      message: `${product.name || 'Product'} has been added to your Wish List.`,
+      linkText: 'View Wish List',
+      linkUrl: rootLink('/wishlist'),
+    });
   } catch (error) {
     console.error('Error adding product to wishlist:', error);
     button.textContent = 'Try again';
+    showNotification({
+      type: 'error',
+      message: `Could not add ${product.name || 'Product'} to your Wish List.`,
+    });
+  } finally {
     window.setTimeout(() => {
       button.textContent = originalLabel;
       button.disabled = false;
     }, 2000);
   }
 }
+
+events.on('wishlist/alert', ({ action, item }) => {
+  const productName = item?.product?.name || 'Product';
+  const routeToWishlist = rootLink('/wishlist');
+  if (action === 'add') {
+    showNotification({
+      type: 'success',
+      message: `${productName} has been added to your Wish List.`,
+      linkText: 'View Wish List',
+      linkUrl: routeToWishlist,
+    });
+  } else if (action === 'remove') {
+    showNotification({
+      type: 'info',
+      message: `${productName} has been removed from your Wish List.`,
+      linkText: 'View Wish List',
+      linkUrl: routeToWishlist,
+    });
+  }
+}, { eager: true });
 
 function createProductCard(product) {
   const productUrl = getProductLink(product.urlKey, product.sku);

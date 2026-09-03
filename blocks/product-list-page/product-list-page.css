@@ -184,6 +184,7 @@
     min-height: auto;
     min-width: auto;
     transition: all .4s ease-in-out;
+    background: transparent;
 }
 
 .block.product-list-page .product-discovery-product-actions__compare button {
