@@ -827,7 +827,6 @@
 }
 
 @media only screen and (max-width: 767px) {
-
     /* Disable background scrolling when drawer is open */
     body.plp-drawer-active {
         overflow: hidden;

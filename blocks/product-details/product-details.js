@@ -17,6 +17,7 @@ import { WishlistAlert } from '@dropins/storefront-wishlist/containers/WishlistA
 // Containers
 import ProductHeader from '@dropins/storefront-pdp/containers/ProductHeader.js';
 import ProductPrice from '@dropins/storefront-pdp/containers/ProductPrice.js';
+import ProductShortDescription from '@dropins/storefront-pdp/containers/ProductShortDescription.js';
 import ProductOptions from '@dropins/storefront-pdp/containers/ProductOptions.js';
 import ProductQuantity from '@dropins/storefront-pdp/containers/ProductQuantity.js';
 import ProductDescription from '@dropins/storefront-pdp/containers/ProductDescription.js';
@@ -169,6 +170,63 @@ function imageSlotConfig(ctx) {
   };
 }
 
+/**
+ * Removes tabs whose panels have no meaningful content.
+ * If all tabs are empty, removes the entire tabs wrapper.
+ * @param {Element} blockEl The block root element
+ */
+function cleanUpEmptyTabs(blockEl) {
+  const tabsWrapper = blockEl.querySelector('.product-details__tabs-wrapper');
+  if (!tabsWrapper) return;
+
+  const tabNav = tabsWrapper.querySelector('.pdp-tabs-nav');
+  const tabsContent = tabsWrapper.querySelector('.pdp-tabs-content');
+  const tabKeys = [...tabNav.querySelectorAll('.pdp-tab-btn')].map(
+    (btn) => btn.getAttribute('data-tab'),
+  );
+
+  tabKeys.forEach((key) => {
+    const panel = tabsContent.querySelector(`.pdp-tab-panel[data-panel="${key}"]`);
+    const hasContent = panel && panel.textContent.trim().length > 0;
+
+    if (!hasContent) {
+      // Remove desktop tab button
+      const navBtn = tabNav.querySelector(`.pdp-tab-btn[data-tab="${key}"]`);
+      navBtn?.remove();
+
+      // Remove accordion header + panel
+      const accHeader = tabsContent.querySelector(`.pdp-accordion-header[data-tab="${key}"]`);
+      accHeader?.remove();
+      panel?.remove();
+    }
+  });
+
+  // If no tabs remain, remove the entire wrapper
+  const remainingBtns = tabNav.querySelectorAll('.pdp-tab-btn');
+  if (remainingBtns.length === 0) {
+    tabsWrapper.remove();
+    return;
+  }
+
+  // Ensure the first remaining tab is active
+  const hasActive = tabNav.querySelector('.pdp-tab-btn.active');
+  if (!hasActive) {
+    const firstBtn = remainingBtns[0];
+    const firstKey = firstBtn.getAttribute('data-tab');
+    firstBtn.classList.add('active');
+    firstBtn.setAttribute('aria-selected', 'true');
+
+    const firstPanel = tabsContent.querySelector(`.pdp-tab-panel[data-panel="${firstKey}"]`);
+    if (firstPanel) firstPanel.classList.add('active');
+
+    const firstAccHeader = tabsContent.querySelector(`.pdp-accordion-header[data-tab="${firstKey}"]`);
+    if (firstAccHeader) {
+      firstAccHeader.classList.add('active');
+      firstAccHeader.setAttribute('aria-expanded', 'true');
+    }
+  }
+}
+
 export default async function decorate(block) {
   const eventProduct = events.lastPayload('pdp/data') ?? null;
   const product = eventProduct?.sku ? eventProduct : null;
@@ -193,6 +251,7 @@ export default async function decorate(block) {
           <div class="product-details__sku"></div>
           <div class="product-details__stock"></div>
         </div>
+        <div class="product-details__short-description"></div>
         <div class="product-details__quantity-container">
           <p class="quantity-title">Qty</p>
           <div class="product-details__quantity"></div>
@@ -275,6 +334,7 @@ export default async function decorate(block) {
   const $gallery = fragment.querySelector('.product-details__gallery.desktop-gallery');
   const $galleryMobile = fragment.querySelector('.product-details__gallery.mobile-gallery');
   const $header = fragment.querySelector('.product-details__header');
+  const $shortDescription = fragment.querySelector('.product-details__short-description');
   const $sku = fragment.querySelector('.product-details__sku');
   const $stock = fragment.querySelector('.product-details__stock');
   const $price = fragment.querySelector('.product-details__price');
@@ -340,6 +400,11 @@ export default async function decorate(block) {
     renderSkuDetails(product, $sku);
     renderStockStatus(product, $stock);
     renderCompareButton(product, $compareBtn, labels);
+
+    // Hide short-description if no data
+    if (!product.shortDescription) {
+      $shortDescription.style.display = 'none';
+    }
   }
 
   let inlineAlert = null;
@@ -349,8 +414,8 @@ export default async function decorate(block) {
     _galleryMobile,
     _gallery,
     _header,
-    _price,
     _shortDescription,
+    _price,
     _options,
     _quantity,
     _giftCardOptions,
@@ -381,6 +446,7 @@ export default async function decorate(block) {
     })($gallery),
 
     pdpRendered.render(ProductHeader, {})($header),
+    pdpRendered.render(ProductShortDescription, {})($shortDescription),
     pdpRendered.render(ProductPrice, {})($price),
 
     pdpRendered.render(ProductOptions, {
@@ -408,6 +474,9 @@ export default async function decorate(block) {
       labelWishlisted: labels.Global?.Wishlisted || 'Add to Wish list',
     })($wishlistToggleBtn),
   ]);
+
+  // Remove tabs with no rendered content
+  cleanUpEmptyTabs(block);
 
   const addToCart = await UI.render(Button, {
     children: labels.Global?.AddProductToCart,
@@ -491,6 +560,9 @@ export default async function decorate(block) {
     if (!data) return;
     isOutOfStock = data?.inStock === false;
     addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
+
+    // Toggle short-description visibility based on data
+    $shortDescription.style.display = data.shortDescription ? '' : 'none';
 
     const categoryData = {
       name: data.name,

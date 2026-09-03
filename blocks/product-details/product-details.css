@@ -60,12 +60,18 @@
 
 
 .product-details__short-description {
-  border-top: solid 1px #aaa;
-  font-weight: 300;
   margin: 20px 0;
-  padding-top: 20px;
+  color: #000;
 }
 
+
+.product-details__short-description p {
+  margin: 0 0 10px;
+}
+
+.product-details__short-description p:last-child {
+  margin: 0;
+}
 
 .product-details__alert {
   margin-top: var(--spacing-small);
@@ -502,6 +508,15 @@
  .pdp-tab-panel .pdp-description {
     padding: 0;
     list-style: none;
+    color: #000;
+  }
+
+  .pdp-tab-panel .pdp-description p {
+      margin: 0 0 10px;
+  }
+
+  .pdp-tab-panel .pdp-description p:last-child {
+      margin: 0;
   }
 
 @media only screen and (min-width: 768px) {

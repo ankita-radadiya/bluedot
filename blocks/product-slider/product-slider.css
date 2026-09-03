@@ -222,7 +222,7 @@
 }
 
 .product-slider-arrow:disabled {
-  opacity: 0.35;
+  opacity: 0;
   cursor: not-allowed;
 }
 
