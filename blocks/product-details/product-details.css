@@ -199,8 +199,37 @@
   position: relative;
   border: 0;
   height: auto;
+  width: 105px;
 }
 
+.product-details__quantity .pdp-quantity {
+  position: relative;
+}
+
+.product-details__quantity .dropin-incrementer__input {
+  border: 2px solid #dfdedd;
+  border-radius: 80px;
+  height: 44px;
+  padding: 10px 30px;
+  text-align: center;
+  transition: border .4s ease-in-out;
+  width: 105px;
+}
+
+.product-details__quantity .dropin-incrementer__input:focus,
+.product-details__quantity .dropin-incrementer__input:hover {
+  border: 2px solid #000;
+}
+
+.product-details__quantity .dropin-incrementer__content.dropin-incrementer__content--error .dropin-incrementer__input {
+  border-color: var(--color-alert-500);
+}
+
+.product-details__quantity  .dropin-incrementer__content--error-message {
+  position: absolute;
+  margin: 10px 0 0;
+  width: max-content;
+}
 
 .product-details__quantity .dropin-incrementer__decrease-button,
 .product-details__quantity .dropin-incrementer__increase-button {
@@ -241,21 +270,6 @@
 .dropin-incrementer__decrease-button:focus:not(:focus-visible),
 .dropin-incrementer__increase-button:focus:not(:focus-visible) {
   background: none;
-}
-
-.product-details__quantity .dropin-incrementer__input {
-  border: 2px solid #dfdedd;
-  border-radius: 80px;
-  height: 44px;
-  padding: 10px 30px;
-  text-align: center;
-  transition: border .4s ease-in-out;
-  width: 105px;
-}
-
-.product-details__quantity .dropin-incrementer__input:focus,
-.product-details__quantity .dropin-incrementer__input:hover {
-  border: 2px solid #000;
 }
 
 
