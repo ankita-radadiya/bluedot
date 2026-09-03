@@ -187,6 +187,11 @@
     background: transparent;
 }
 
+.product-discovery-product-list__grid .dropin-product-item-card img,
+.product-discovery-product-list__grid .dropin-product-item-card__skeleton__image {
+    aspect-ratio: auto;
+}
+
 .block.product-list-page .product-discovery-product-actions__compare button {
     transform: scale(-1) rotate(-90deg);
 }
