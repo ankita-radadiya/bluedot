@@ -9,6 +9,10 @@ on:
 jobs:
   check-block-readme:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+      issues: write
     if: github.event.pull_request.draft == false
 
     steps:
