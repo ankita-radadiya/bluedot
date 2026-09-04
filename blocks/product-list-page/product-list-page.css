@@ -187,6 +187,11 @@
     background: transparent;
 }
 
+.dropin-product-item-card__image img {
+    border-radius: 0;
+}
+
+
 .product-discovery-product-list__grid .dropin-product-item-card img,
 .product-discovery-product-list__grid .dropin-product-item-card__skeleton__image {
     aspect-ratio: auto;
@@ -402,9 +407,6 @@
     border-radius: 0;
 }
 
-.dropin-product-item-card__image img {
-    border-radius: 0;
-}
 
 .product-discovery-product-list .product-price {
     flex-direction: column;
