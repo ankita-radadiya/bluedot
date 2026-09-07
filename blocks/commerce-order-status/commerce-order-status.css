@@ -1,5 +1,64 @@
-/* stylelint-disable no-empty-source */
+.commerce-order-status-wrapper .order-order-status-content {
+    border: 0;
+    margin: 0 0 30px;
+}
 
-.commerce-order-status {
-    margin-bottom: var(--spacing-small);
+.commerce-order-status-wrapper .dropin-card__content {
+    padding: 0;
+}
+
+.commerce-order-status-wrapper .dropin-card__content hr {
+    display: none;
+}
+
+.commerce-order-status-wrapper .dropin-header-container .dropin-header-container__title {
+    color: #000;
+    font-size: 1.8rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 2.3rem;
+    margin: 0 0 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.commerce-order-status-wrapper .dropin-header-container .dropin-header-container__title::before {
+    content: "Status:";
+}
+
+.order-order-status-content__wrapper .order-order-status-content__wrapper-description p {
+    font-size: 1.4rem;
+    line-height: 2.4rem;
+    margin: 0;
+    color: #000;
+    font-weight: 400;
+}
+
+.commerce-order-status-wrapper .order-order-actions__wrapper {
+    margin: 20px 0 0;
+}
+
+.commerce-order-status-wrapper .order-order-actions__wrapper button {
+    width: auto;
+}
+
+.order-order-status-content__header--content {
+    border: 1px solid #aaa;
+    border-radius: 0;
+    padding: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media only screen and (min-width: 768px) {
+    .commerce-order-status-wrapper .dropin-header-container .dropin-header-container__title {
+        font-size: 2.4rem;
+        line-height: 3rem;
+    }
+
+    .order-order-status-content__wrapper .order-order-status-content__wrapper-description p {
+        font-size: 1.6rem;
+        line-height: 3rem;
+    }
 }

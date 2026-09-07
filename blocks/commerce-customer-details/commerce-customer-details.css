@@ -1,6 +1,70 @@
-/* .commerce-customer-details {
-} */
+.commerce-customer-details-wrapper .order-customer-details-content {
+    border: 0;
+    margin: 30px 0;
+}
 
-.commerce-customer-details {
-    margin-bottom: var(--spacing-small);
+.commerce-customer-details-wrapper .dropin-card__content {
+    padding: 0;
+}
+
+.commerce-customer-details-wrapper .dropin-card__content hr {
+    display: none;
+}
+
+.commerce-customer-details-wrapper .dropin-header-container .dropin-header-container__title {
+    color: #000;
+    font-size: 1.8rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 2.3rem;
+    margin: 0 0 15px;
+    display: block;
+}
+
+.commerce-customer-details-wrapper .order-customer-details-content__container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+}
+
+.order-customer-details-content__container-title,
+.order-customer-details-content__container p {
+    font-size: 1.4rem;
+    line-height: 2.4rem;
+    margin: 0;
+    color: #000;
+    font-weight: 400;
+}
+
+.order-customer-details-content__container-title {
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+@media only screen and (min-width: 768px) {
+    .commerce-customer-details-wrapper .dropin-header-container .dropin-header-container__title {
+        font-size: 2.4rem;
+        line-height: 3rem;
+    }
+
+    .order-customer-details-content__container-shipping_address,
+    .order-customer-details-content__container-billing_address,
+    .order-customer-details-content__container-return-information,
+    .order-customer-details-content__container-shipping_methods,
+    .order-customer-details-content__container-payment_methods,
+    .order-customer-details-content__container-email {
+        grid-area: unset;
+        margin: 0;
+        border: 1px solid #aaa;
+        padding: 20px;
+    }
+
+    .order-customer-details-content__container-email p {
+        word-break: break-all;
+    }
+
+    .order-customer-details-content__container-title,
+    .order-customer-details-content__container p {
+        font-size: 1.6rem;
+        line-height: 3rem;
+    }
 }

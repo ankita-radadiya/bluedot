@@ -36,7 +36,7 @@ No events are emitted by this block. -->
 
 - **Authenticated Users**: When user is authenticated, renders the full orders list interface
 - **Unauthenticated Users**: When user is not authenticated, redirects to login page
-- **Minified View**: When `minified-view` is 'true', displays orders in a compact format
+- **Minified View**: When `minified-view` is 'true', displays up to a maximum of 5 orders in a compact table format, sorted in descending order (latest orders first)
 - **Full View**: When `minified-view` is 'false', displays orders in full format with all details
 
 ### User Interaction Flows

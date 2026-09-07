@@ -165,14 +165,28 @@
     right: 30px;
 }
 
-.account-address-form-wrapper .account-form .account-address-form-wrapper__buttons .dropin-button--secondary {
-    padding: 15px 35px;
+.account-address-form-wrapper .account-form .account-address-form-wrapper__buttons .dropin-button {
+    padding: 12px 25px;
     font-size: 1.6rem;
     line-height: 2rem;
     box-sizing: border-box;
     vertical-align: middle;
     border-radius: 4px;
+    border: 1px solid;
+    min-width: 0;
 }
+
+
+.account-addresses-wrapper .account-account-loaders--card-loader {
+    grid-column: 1 / -1;
+    margin: 0;
+    border: 0;
+}
+
+.account-addresses .dropin-card.account-account-loaders--card-loader .dropin-card__content {
+    max-width: 100%;
+}
+
 
 .account-addresses-wrapper .account-empty-list,
 .account-addresses-wrapper .account-addresses__footer {
