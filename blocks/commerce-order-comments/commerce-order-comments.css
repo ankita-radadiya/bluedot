@@ -1,3 +1,35 @@
-.commerce-order-comments {
-  margin-bottom: var(--spacing-small);
+.commerce-order-comments-wrapper .order-order-comments-card {
+  border: 0;
+  margin: 0 0 30px;
+}
+
+.commerce-order-comments-wrapper .dropin-card__content {
+  padding: 0;
+}
+
+.commerce-order-comments-wrapper .dropin-card__content hr {
+  display: none;
+}
+
+.commerce-order-comments-wrapper .order-order-comments-card__container {
+  border: 1px solid #aaa;
+  border-radius: 0;
+  padding: 0 16px;
+}
+
+.commerce-order-comments-wrapper .dropin-header-container .dropin-header-container__title {
+  color: #000;
+  font-size: 1.8rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 2.3rem;
+  margin: 0 0 15px;
+  display: block;
+}
+
+@media only screen and (min-width: 768px) {
+  .commerce-order-comments-wrapper .dropin-header-container .dropin-header-container__title {
+    font-size: 2.4rem;
+    line-height: 3rem;
+  }
 }

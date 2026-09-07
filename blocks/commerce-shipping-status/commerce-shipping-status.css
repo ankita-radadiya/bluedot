@@ -1,9 +1,51 @@
-/* stylelint-disable no-empty-source */
-
-.commerce-shipping-status {
-    margin-bottom: var(--spacing-small);
+.commerce-shipping-status-wrapper .order-shipping-status-card {
+    border: 0;
+    margin: 0 0 30px;
 }
 
-.commerce-shipping-status .order-shipping-status-card {
-    margin-bottom: var(--spacing-small);
+.commerce-shipping-status-wrapper .dropin-card__content {
+    padding: 0;
+}
+
+.commerce-shipping-status-wrapper .dropin-card__content hr {
+    display: none;
+}
+
+.commerce-shipping-status-wrapper .dropin-header-container .dropin-header-container__title {
+    color: #000;
+    font-size: 1.8rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 2.3rem;
+    margin: 0 0 15px;
+    display: block;
+}
+
+.order-shipping-status-card__header--content p,
+.order-shipping-status-card--return-order p {
+    font-size: 1.4rem;
+    line-height: 2.4rem;
+    margin: 0;
+    color: #000;
+    font-weight: 400;
+}
+
+.order-shipping-status-card__header--content {
+    border: 1px solid #aaa;
+    border-radius: 0;
+    padding: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media only screen and (min-width: 768px) {
+    .commerce-shipping-status-wrapper .dropin-header-container .dropin-header-container__title {
+        font-size: 2.4rem;
+        line-height: 3rem;
+    }
+
+    .order-shipping-status-card__header--content p {
+        font-size: 1.6rem;
+        line-height: 3rem;
+    }
 }

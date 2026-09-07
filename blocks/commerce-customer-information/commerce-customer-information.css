@@ -21,6 +21,8 @@
     display: block;
 }
 
+.account-edit-customer-information__title .dropin-header-container__title,
+.account-change-password__title .dropin-header-container__title,
 .customer-information__title .dropin-header-container__title,
 .account-addresses-header-title .dropin-header-container__title,
 .account-orders-list-header-title .dropin-header-container__title {
@@ -112,21 +114,9 @@
 .account-edit-customer-information .account-edit-customer-information__actions button,
 .account-change-password .account-change-password__actions button {
     min-width: fit-content;
-}
-
-.account-edit-customer-information .account-edit-customer-information__actions .dropin-button--secondary,
-.account-change-password .account-change-password__actions .dropin-button--secondary {
-    border-radius: 0;
-    border: 3px solid var(--color-dark-blue);
-    color: #000;
-    font-weight: 700;
-    padding: 8px 20px;
-}
-
-.account-edit-customer-information .account-edit-customer-information__actions .dropin-button--secondary:hover,
-.account-change-password .account-change-password__actions .dropin-button--secondary:hover {
-    background-color: var(--color-dark-blue);
-    color: #fff;
+    padding: 12px 25px;
+    font-size: 1.6rem;
+    line-height: 2rem;
 }
 
 

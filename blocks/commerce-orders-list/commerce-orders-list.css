@@ -10,6 +10,12 @@
   width: 100%;
 }
 
+.commerce-orders-list .account-orders-list__pagination {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+}
+
 .commerce-orders-list .account-orders-list ul {
   list-style: none;
   margin: 0;
@@ -122,27 +128,23 @@
 
   /* Column Widths */
   .commerce-orders-list .col-order {
-    width: 22%;
+    width: 30%;
   }
 
   .commerce-orders-list .col-date {
-    width: 14%;
-  }
-
-  .commerce-orders-list .col-created {
-    width: 24%;
+    width: 20%;
   }
 
   .commerce-orders-list .col-total {
-    width: 16%;
+    width: 20%;
   }
 
   .commerce-orders-list .col-status {
-    width: 12%;
+    width: 15%;
   }
 
   .commerce-orders-list .col-action {
-    width: 12%;
+    width: 15%;
   }
 
   /* Desktop Table Rows */
