@@ -265,6 +265,12 @@ async function loadEager(doc) {
     /* if desktop (proxy for fast connection) or fonts already loaded, load fonts.css */
     if (window.innerWidth >= 900 || sessionStorage.getItem('fonts-loaded')) {
       loadFonts();
+      if (window.location.pathname === '/') {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/styles/home.css';
+        document.head.appendChild(link);
+      }
     }
   } catch (e) {
     // do nothing
