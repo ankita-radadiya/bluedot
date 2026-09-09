@@ -15,7 +15,7 @@ import { isAemAssetsEnabled, isAemAssetsUrl, generateAemAssetsOptimizedUrl } fro
 // Event Bus
 import { events } from '@dropins/tools/event-bus.js';
 
-// Relative Lib Imports (2 levels up to project root)
+// Relative Lib Imports
 import {
   fetchPlaceholders,
   getProductLink,
@@ -38,11 +38,13 @@ import { showNotification } from '../../scripts/components/notification.js';
 import '../../scripts/initializers/search.js';
 import '../../scripts/initializers/wishlist.js';
 
-// Configuration Options
 const FACET_OPTIONS = {
   defaultCollapsed: true,
   categoriesFilterType: 'multi',
 };
+
+// Memory Leak Prevention: Track active block instances and cleanup handlers
+const cleanupRegistry = new WeakMap();
 
 function safeRenderBreadcrumbs(container, categoryData, labels) {
   try {
@@ -228,7 +230,8 @@ async function getCategoryMetadata(categoryId, urlPath) {
     let pid = current.parentId;
     while (pid && !visited.has(pid)) {
       visited.add(pid);
-      const ancestor = allCategories.find((c) => c.id === pid); // eslint-disable-line no-loop-func
+      const currentPid = pid;
+      const ancestor = allCategories.find((c) => c.id === currentPid);
       if (!ancestor) break;
       breadcrumbs.unshift({
         category_name: ancestor.name,
@@ -244,7 +247,7 @@ async function getCategoryMetadata(categoryId, urlPath) {
   }
 }
 
-function initCollapsibleFacets($facets) {
+function initCollapsibleFacets($facets, signal) {
   const processedGroups = new WeakSet();
 
   function makeFacetGroupCollapsible(group) {
@@ -289,13 +292,13 @@ function initCollapsibleFacets($facets) {
       headerEl.setAttribute('aria-expanded', String(!collapsed));
     };
 
-    headerEl.addEventListener('click', toggle);
+    headerEl.addEventListener('click', toggle, { signal });
     headerEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         toggle();
       }
-    });
+    }, { signal });
   }
 
   function decorateRenderedFacets() {
@@ -312,7 +315,7 @@ function initCollapsibleFacets($facets) {
   return observer;
 }
 
-function renderActiveFilterChips($container, activeFilters, onRemoveFilter, onResetAll) {
+function renderActiveFilterChips($container, activeFilters, onRemoveFilter, onResetAll, signal) {
   $container.innerHTML = '';
 
   const userVisibleFilters = (activeFilters || []).filter(
@@ -346,7 +349,7 @@ function renderActiveFilterChips($container, activeFilters, onRemoveFilter, onRe
     e.preventDefault();
     e.stopPropagation();
     onResetAll();
-  });
+  }, { signal });
 
   header.appendChild(titleToggle);
 
@@ -377,7 +380,7 @@ function renderActiveFilterChips($container, activeFilters, onRemoveFilter, onRe
         e.preventDefault();
         e.stopPropagation();
         onRemoveFilter(filter.attribute, val);
-      });
+      }, { signal });
 
       list.appendChild(chip);
     });
@@ -386,21 +389,158 @@ function renderActiveFilterChips($container, activeFilters, onRemoveFilter, onRe
   header.addEventListener('click', (e) => {
     if (e.target.classList.contains('plp-active-filters-reset')) return;
     $container.classList.toggle('is-collapsed');
-  });
+  }, { signal });
 
   $container.appendChild(header);
   $container.appendChild(list);
   $container.appendChild(resetLink);
 }
 
-export default async function decorate(block) {
-  const labels = await fetchPlaceholders();
-  const storeConfig = await fetchStoreConfigPLP();
+function removeBreadcrumbSkeleton(container) {
+  container?.querySelector('.plp-skeleton-breadcrumbs')?.remove();
+}
 
+function removeTitleSkeleton(titleEl) {
+  titleEl?.classList.remove('plp-skeleton-shimmer', 'plp-skeleton-title');
+}
+
+export default async function decorate(block) {
+  // Cleanup previous block state/listeners if block re-decorates
+  if (cleanupRegistry.has(block)) {
+    cleanupRegistry.get(block)();
+  }
+
+  const abortController = new AbortController();
+  const { signal } = abortController;
+  const observers = [];
+
+  // Register unmount / memory cleanup function
+  cleanupRegistry.set(block, () => {
+    abortController.abort();
+    observers.forEach((obs) => obs.disconnect());
+  });
+
+  // 1. Un-hide parent section synchronously to show skeletons immediately
+  const parentSection = block.closest('.section');
+  if (parentSection) {
+    parentSection.style.display = '';
+    parentSection.dataset.sectionStatus = 'loaded';
+  }
+
+  // 2. Parse block configurations
   const config = readBlockConfig(block);
   const categoryMeta = getCategoryFromUrl();
-  const hasPrerenderedMarkup = block.dataset.prerendered === 'true';
   const hasServerCategoryJsonLd = isCategoryPrerendered();
+
+  // 3. Setup Global Breadcrumb Skeleton
+  const globalBreadcrumbsContainer = getGlobalBreadcrumbsContainer();
+  if (globalBreadcrumbsContainer
+    && !globalBreadcrumbsContainer.querySelector('.plp-skeleton-breadcrumbs')) {
+    const bSkeleton = document.createElement('div');
+    bSkeleton.className = 'plp-skeleton-breadcrumbs plp-skeleton-shimmer';
+    globalBreadcrumbsContainer.appendChild(bSkeleton);
+  }
+
+  // 4. Mount structure fragment with layout skeletons for toolbar controls & sort dropdown
+  const fragment = document.createRange().createContextualFragment(`
+    <div class="search__header"></div>
+    <div class="sidebar-toolbar">
+      <div class="plp-sidebar-toggle-wrapper plp-skeleton-shimmer">
+        <button type="button" class="plp-sidebar-toggle-btn" aria-label="Hide Filters" title="Hide Filters">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg>
+          <span class="toggle-btn-text">Hide Filters</span>
+        </button>
+      </div>
+      <div class="plp-toolbar-container">
+        <div class="plp-toolbar">
+          <div class="plp-filter-trigger-wrapper">
+            <div class="search__view-facets"></div>
+          </div>
+          <div class="plp-toolbar-controls plp-skeleton-shimmer">
+            <div class="plp-view-mode-toggle" aria-label="View Mode Toggle">
+              <button type="button" class="plp-view-btn plp-view-btn--grid active" data-mode="grid" aria-label="Grid View" title="Grid View">
+                <span class="plp-view-icon grid-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                </span>
+              </button>
+              <button type="button" class="plp-view-btn plp-view-btn--list" data-mode="list" aria-label="List View" title="List View">
+                <span class="plp-view-icon list-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>
+                </span>
+              </button>
+            </div>
+            <div class="plp-page-size-selector">
+              <label for="plp-page-size-select" class="plp-page-size-label">Show</label>
+              <select id="plp-page-size-select" class="plp-page-size-select" aria-label="Products Per Page"></select>
+            </div>
+          </div>
+          <div class="search__product-sort plp-skeleton-shimmer"></div>
+        </div>
+      </div>
+    </div>
+    <div class="search__wrapper">
+      <div class="column-main">
+        <div class="plp-active-filters-widget"></div>
+        <div class="search__product-list">
+          <div class="plp-skeleton-grid">
+            ${Array(8).fill('<div class="plp-skeleton-card plp-skeleton-shimmer"></div>').join('')}
+          </div>
+        </div>
+        <div class="search__pagination"></div>
+      </div>
+      <div class="sidebar-main plp-filter-drawer">
+        <div class="plp-drawer-header">
+          <div class="plp-header-content">
+            <span class="plp-drawer-title" style="display: none;">Now Shopping by</span>
+            <div class="plp-drawer-actions">
+              <button type="button" class="plp-reset-filters-btn" style="display: none;">Reset All</button>
+              <button type="button" class="plp-close-drawer-btn" aria-label="Close Filter Drawer">&times;</button>
+            </div>
+          </div>
+        </div>
+        <div class="plp-drawer-body">
+          <div class="search__facets">
+            <div class="plp-skeleton-sidebar">
+              <div class="plp-skeleton-sidebar-item plp-skeleton-shimmer"></div>
+              <div class="plp-skeleton-sidebar-item plp-skeleton-shimmer"></div>
+              <div class="plp-skeleton-sidebar-item plp-skeleton-shimmer"></div>
+              <div class="plp-skeleton-sidebar-item plp-skeleton-shimmer"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="plp-filter-overlay"></div>
+    </div>
+  `);
+
+  block.innerHTML = '';
+  block.appendChild(fragment);
+  block.dataset.blockStatus = 'loaded';
+
+  // Resolve Title target element
+  let $pageTitle = document.querySelector('.category-banner-wrapper .page-title')
+    || document.querySelector('.page-title')
+    || block.querySelector('.search__header .page-title');
+
+  if (!$pageTitle) {
+    const headerEl = block.querySelector('.search__header');
+    if (headerEl) {
+      const h = document.createElement('h1');
+      h.className = 'page-title';
+      headerEl.appendChild(h);
+      $pageTitle = h;
+    }
+  }
+
+  if ($pageTitle) {
+    $pageTitle.classList.add('plp-skeleton-title', 'plp-skeleton-shimmer');
+  }
+
+  // 5. Fetch Placeholders & Store Config Concurrently
+  const [labels, storeConfig] = await Promise.all([
+    fetchPlaceholders(),
+    fetchStoreConfigPLP(),
+  ]);
 
   const gridDefaultSize = storeConfig?.grid_per_page || 12;
   const gridAllowedValues = storeConfig?.grid_per_page_values
@@ -442,102 +582,20 @@ export default async function decorate(block) {
     }
   }
 
-  const fragment = document.createRange().createContextualFragment(`
-    <div class="search__header"></div>
-    <div class="sidebar-toolbar">
-    <div class="plp-sidebar-toggle-wrapper">
-        <button type="button" class="plp-sidebar-toggle-btn" aria-label="Hide Filters" title="Hide Filters">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg>
-          <span class="toggle-btn-text">Hide Filters</span>
-        </button>
-      </div>
-      <div class="plp-toolbar-container">
-      <div class="plp-toolbar">
-         <div class="plp-filter-trigger-wrapper">
-           <div class="search__view-facets"></div>
-         </div>
-         <div class="plp-toolbar-controls">
-           <div class="plp-view-mode-toggle" aria-label="View Mode Toggle">
-             <button type="button" class="plp-view-btn plp-view-btn--grid" data-mode="grid" aria-label="Grid View" title="Grid View">
-               <span class="plp-view-icon grid-icon">
-               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-               </span>
-             </button>
-             <button type="button" class="plp-view-btn plp-view-btn--list" data-mode="list" aria-label="List View" title="List View">
-               <span class="plp-view-icon list-icon">
-                
-               </span>
-               <span class="plp-view-icon list-icon">
-               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>
-               </span>
-             </button>
-           </div>
-           <div class="plp-page-size-selector">
-             <label for="plp-page-size-select" class="plp-page-size-label">Show</label>
-             <select id="plp-page-size-select" class="plp-page-size-select" aria-label="Products Per Page"></select>
-           </div>
-         </div>
-         <div class="search__product-sort"></div>
-       </div>
-      </div>
-    </div>
-    <div class="search__wrapper">
-     <div class="column-main">
-       <div class="plp-active-filters-widget"></div>
-       <div class="search__product-list"></div>
-       <div class="search__pagination"></div>
-     </div>
-     <div class="sidebar-main plp-filter-drawer">
-        <div class="plp-drawer-header">
-          <div class="plp-header-content">
-            <span class="plp-drawer-title" style="display: none;">Now Shopping by</span>
-            <div class="plp-drawer-actions">
-              <button type="button" class="plp-reset-filters-btn" style="display: none;">Reset All</button>
-              <button type="button" class="plp-close-drawer-btn" aria-label="Close Filter Drawer">&times;</button>
-            </div>
-          </div>
-        </div>
-        <div class="plp-drawer-body">
-          <div class="search__facets"></div>
-        </div>
-     </div>
-     <div class="plp-filter-overlay"></div>
-    </div>
-  `);
-
-  let $pageTitle = document.querySelector('.page-title') || fragment.querySelector('.plp-title') || fragment.querySelector('.page-title');
-  // Ensure we have a title element to update — if not, create one inside the fragment header
-  if (!$pageTitle) {
-    const headerEl = fragment.querySelector('.search__header');
-    if (headerEl) {
-      const h = document.createElement('h1');
-      h.className = 'page-title';
-      headerEl.appendChild(h);
-      $pageTitle = h;
-    }
-  }
-  const $viewFacets = fragment.querySelector('.search__view-facets');
-  const $facets = fragment.querySelector('.search__facets');
-  const $productSort = fragment.querySelector('.search__product-sort');
-  const $productList = fragment.querySelector('.search__product-list');
-  const $pagination = fragment.querySelector('.search__pagination');
-  const $searchWrapper = fragment.querySelector('.search__wrapper');
-  const $pageSizeSelect = fragment.querySelector('#plp-page-size-select');
-  const $drawer = fragment.querySelector('.plp-filter-drawer');
-  const $overlay = fragment.querySelector('.plp-filter-overlay');
-  const $closeBtn = fragment.querySelector('.plp-close-drawer-btn');
-  const $resetBtn = fragment.querySelector('.plp-reset-filters-btn');
-  const $drawerTitle = fragment.querySelector('.plp-drawer-title');
-  const $activeFiltersWidget = fragment.querySelector('.plp-active-filters-widget');
-
-  const fallbackNodes = hasPrerenderedMarkup ? [...block.childNodes] : [];
-
-  if (hasPrerenderedMarkup) {
-    $searchWrapper.hidden = true;
-  } else {
-    block.innerHTML = '';
-  }
-  block.appendChild(fragment);
+  const $viewFacets = block.querySelector('.search__view-facets');
+  const $facets = block.querySelector('.search__facets');
+  const $productSort = block.querySelector('.search__product-sort');
+  const $productList = block.querySelector('.search__product-list');
+  const $pagination = block.querySelector('.search__pagination');
+  const $pageSizeSelect = block.querySelector('#plp-page-size-select');
+  const $sidebarToggleWrapper = block.querySelector('.plp-sidebar-toggle-wrapper');
+  const $toolbarControls = block.querySelector('.plp-toolbar-controls');
+  const $drawer = block.querySelector('.plp-filter-drawer');
+  const $overlay = block.querySelector('.plp-filter-overlay');
+  const $closeBtn = block.querySelector('.plp-close-drawer-btn');
+  const $resetBtn = block.querySelector('.plp-reset-filters-btn');
+  const $drawerTitle = block.querySelector('.plp-drawer-title');
+  const $activeFiltersWidget = block.querySelector('.plp-active-filters-widget');
 
   const openFilterDrawer = () => {
     $drawer.classList.add('is-open');
@@ -548,16 +606,14 @@ export default async function decorate(block) {
   const closeFilterDrawer = () => {
     $drawer.classList.remove('is-open');
     $overlay.classList.remove('is-visible');
-
     setTimeout(() => {
       document.body.classList.remove('plp-drawer-active');
     }, 300);
   };
 
-  $overlay.addEventListener('click', closeFilterDrawer);
-  $closeBtn.addEventListener('click', closeFilterDrawer);
+  $overlay.addEventListener('click', closeFilterDrawer, { signal });
+  $closeBtn.addEventListener('click', closeFilterDrawer, { signal });
 
-  // Desktop Sidebar Toggle with proper button functionality
   const updateToggleButtonLabel = ($btn) => {
     const isHidden = block.classList.contains('sidebar-hidden');
     $btn.setAttribute('aria-label', isHidden ? 'Show Filters' : 'Hide Filters');
@@ -571,7 +627,6 @@ export default async function decorate(block) {
   const initializeSidebarToggle = () => {
     const $sidebarToggleBtn = block.querySelector('.plp-sidebar-toggle-btn');
     if ($sidebarToggleBtn) {
-      // Remove existing listeners by cloning
       const newBtn = $sidebarToggleBtn.cloneNode(true);
       $sidebarToggleBtn.parentNode.replaceChild(newBtn, $sidebarToggleBtn);
 
@@ -580,13 +635,12 @@ export default async function decorate(block) {
         e.stopPropagation();
         block.classList.toggle('sidebar-hidden');
         updateToggleButtonLabel(newBtn);
-      });
+      }, { signal });
 
       updateToggleButtonLabel(newBtn);
     }
   };
 
-  // Initialize toggle after fragment is appended
   initializeSidebarToggle();
 
   const searchState = getSearchStateFromUrl(new URL(window.location.href));
@@ -596,7 +650,6 @@ export default async function decorate(block) {
   const categoryId = categoryMeta?.cateId || block.dataset.categoryId
     || getCategoryFromUrl()?.cateId || config.defaultcateid;
 
-  let searchSucceeded = true;
   const executeSearch = async (targetPage = searchState.currentPage) => {
     const categoryFilter = categoryId
       ? { attribute: 'category_uid', eq: categoryId }
@@ -613,7 +666,6 @@ export default async function decorate(block) {
       sort: searchState?.sort?.length ? searchState.sort : [{ attribute: 'position', direction: 'DESC' }],
       filter: filterList,
     }).catch((e) => {
-      searchSucceeded = false;
       console.error('Error searching for products', e);
     });
   };
@@ -633,7 +685,7 @@ export default async function decorate(block) {
     await executeSearch(1);
   };
 
-  $resetBtn.addEventListener('click', resetAllFilters);
+  $resetBtn.addEventListener('click', resetAllFilters, { signal });
 
   const applyViewMode = (mode) => {
     currentMode = mode;
@@ -675,35 +727,37 @@ export default async function decorate(block) {
     block.dataset.categoryId = categoryMeta.cateId;
   }
 
-  // --- BREADCRUMBS & HEADING RESOLUTION (SEARCH VS CATEGORY) ---
+  // Resolve Titles and Breadcrumbs asynchronously
   if (searchState.phrase) {
-    // 1. Search Results Context
     const searchQuery = searchState.phrase;
-    $pageTitle.innerHTML = `Search Results for <span>"${searchQuery}"</span>`;
+    removeTitleSkeleton($pageTitle);
+    if ($pageTitle) {
+      $pageTitle.innerHTML = `Search Results for <span>"${searchQuery}"</span>`;
+    }
     document.title = `Search Results for "${searchQuery}"`;
 
     const searchBreadcrumbsData = {
       name: `Search result for: "${searchQuery}"`,
-      breadcrumbs: [
-        {
-          category_url_path: '/',
-        },
-      ],
+      breadcrumbs: [{ category_url_path: '/' }],
     };
-    const globalBreadcrumbsContainer = getGlobalBreadcrumbsContainer();
+    removeBreadcrumbSkeleton(globalBreadcrumbsContainer);
     safeRenderBreadcrumbs(globalBreadcrumbsContainer, searchBreadcrumbsData, labels);
   } else if (config.urlpath || categoryId) {
-    // 2. Category Page Context
     getCategoryMetadata(categoryId, config.urlpath).then((categoryData) => {
       if (categoryData) {
-        $pageTitle.textContent = categoryData.name;
-        const globalBreadcrumbsContainer = getGlobalBreadcrumbsContainer();
+        removeTitleSkeleton($pageTitle);
+        if ($pageTitle) {
+          $pageTitle.textContent = categoryData.name;
+        }
+        removeBreadcrumbSkeleton(globalBreadcrumbsContainer);
         safeRenderBreadcrumbs(globalBreadcrumbsContainer, categoryData, labels);
         if (!document.querySelector('meta[name="title"]')?.content) {
           document.title = categoryData.name;
         }
       }
     }).catch((err) => {
+      removeTitleSkeleton($pageTitle);
+      removeBreadcrumbSkeleton(globalBreadcrumbsContainer);
       console.error('Failed to resolve category metadata for breadcrumbs:', err);
     });
   }
@@ -725,7 +779,7 @@ export default async function decorate(block) {
       if (pageSize !== prevPageSize) {
         await executeSearch(1);
       }
-    });
+    }, { signal });
   });
 
   if ($pageSizeSelect) {
@@ -735,7 +789,7 @@ export default async function decorate(block) {
         pageSize = newSize;
         await executeSearch(1);
       }
-    });
+    }, { signal });
   }
 
   const getAddToCartButton = (product) => {
@@ -787,12 +841,15 @@ export default async function decorate(block) {
 
   function observeSelectedFacets($container) {
     const observer = new MutationObserver(() => {
-      const selectedFiltersList = $container.querySelector('.product-discovery-facet-list__selected-filters');
+      const selectedFiltersList = $container.querySelector(
+        '.product-discovery-facet-list__selected-filters',
+      );
       if (!selectedFiltersList) return;
 
       const buttons = Array.from(selectedFiltersList.querySelectorAll('button'));
       const filterChips = buttons.filter(
-        (btn) => !btn.textContent.trim().toLowerCase().includes('clear all') && !btn.classList.contains('reset'),
+        (btn) => !btn.textContent.trim().toLowerCase().includes('clear all')
+          && !btn.classList.contains('reset'),
       );
 
       if (filterChips.length === 0) {
@@ -802,14 +859,13 @@ export default async function decorate(block) {
 
       selectedFiltersList.classList.remove('is-empty');
 
-      // Remove reset-all class from all buttons first
       buttons.forEach((btn) => {
         btn.classList.remove('reset-all');
       });
 
-      // Find and apply reset-all class to only the first matching button
       const clearAllBtn = buttons.find(
-        (btn) => btn.textContent.trim().toLowerCase().includes('clear all') || btn.classList.contains('reset'),
+        (btn) => btn.textContent.trim().toLowerCase().includes('clear all')
+          || btn.classList.contains('reset'),
       );
 
       if (clearAllBtn) {
@@ -818,10 +874,16 @@ export default async function decorate(block) {
     });
 
     observer.observe($container, { childList: true, subtree: true });
+    observers.push(observer);
   }
 
+  $facets.innerHTML = '';
+
+  // Synchronized rendering of dropin controls and clear skeletons together
   await Promise.all([
-    provider.render(SortBy, {})($productSort),
+    provider.render(SortBy, {})($productSort).then(() => {
+      $productSort?.classList.remove('plp-skeleton-shimmer');
+    }),
     provider.render(Pagination, {
       onPageChange: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
     })($pagination),
@@ -834,7 +896,8 @@ export default async function decorate(block) {
     provider.render(Facets, {
       categoriesFilterType: FACET_OPTIONS.categoriesFilterType,
     })($facets).then(() => {
-      initCollapsibleFacets($facets);
+      const facetObserver = initCollapsibleFacets($facets, signal);
+      if (facetObserver) observers.push(facetObserver);
       observeSelectedFacets($facets);
     }),
     provider.render(SearchResults, {
@@ -909,7 +972,7 @@ export default async function decorate(block) {
                 linkUrl: rootLink('/compare'),
               });
             });
-          });
+          }, { signal });
 
           $compareBtnContainer.appendChild(compareBtn);
 
@@ -923,13 +986,18 @@ export default async function decorate(block) {
     })($productList),
   ]);
 
-  if (hasPrerenderedMarkup && searchSucceeded) {
-    fallbackNodes.forEach((node) => node.remove());
-    $searchWrapper.hidden = false;
-    block.dataset.enhanced = 'true';
-  }
+  // Strip skeletons for sidebar toggle and view controls simultaneously
+  $sidebarToggleWrapper?.classList.remove('plp-skeleton-shimmer');
+  $toolbarControls?.classList.remove('plp-skeleton-shimmer');
 
-  events.on('search/result', (payload) => {
+  // Handle Event Bus listeners with automatic unsubscribe tracking
+  const searchUnsub = events.on('search/result', (payload) => {
+    const gridSkeleton = $productList.querySelector('.plp-skeleton-grid');
+    if (gridSkeleton) gridSkeleton.remove();
+
+    const sidebarSkeleton = $facets.querySelector('.plp-skeleton-sidebar');
+    if (sidebarSkeleton) sidebarSkeleton.remove();
+
     const totalCount = payload.result?.totalCount || 0;
     block.classList.toggle('product-list-page--empty', totalCount === 0);
 
@@ -976,6 +1044,7 @@ export default async function decorate(block) {
         await executeSearch(1);
       },
       resetAllFilters,
+      signal,
     );
 
     const filterBtn = $viewFacets.querySelector('button');
@@ -990,13 +1059,7 @@ export default async function decorate(block) {
     }
   }, { eager: true });
 
-  events.on('search/result', (payload) => {
-    const url = new URL(window.location.href);
-    applySearchStateToUrl(url, payload.request);
-    window.history.pushState({}, '', url.toString());
-  }, { eager: false });
-
-  events.on('wishlist/alert', ({ action, item }) => {
+  const wishlistUnsub = events.on('wishlist/alert', ({ action, item }) => {
     const productName = item?.product?.name || 'Product';
     const routeToWishlist = rootLink('/wishlist');
     if (action === 'add') {
@@ -1025,6 +1088,12 @@ export default async function decorate(block) {
       });
     }
   }, { eager: true });
+
+  // Add event bus un-subscriptions to unmount cleanup function
+  signal.addEventListener('abort', () => {
+    if (typeof searchUnsub === 'function') searchUnsub();
+    if (typeof wishlistUnsub === 'function') wishlistUnsub();
+  });
 
   return Promise.resolve();
 }

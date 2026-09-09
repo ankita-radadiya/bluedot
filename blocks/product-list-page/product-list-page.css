@@ -24,6 +24,17 @@
     white-space: nowrap;
 }
 
+.block.product-list-page .plp-skeleton-shimmer>* {
+    opacity: 0;
+}
+
+.block.product-list-page .sidebar-toolbar .plp-sidebar-toggle-wrapper.plp-skeleton-shimmer>* {
+    opacity: 0;
+}
+
+.product-discovery-facet-list__selected-filters button {
+    background-color: #fff;
+}
 
 .block.product-list-page .plp-sidebar-toggle-btn .toggle-btn-text {
     display: none;
@@ -233,6 +244,7 @@
 .block.product-list-page.product-list-page--empty .search__wrapper .column-main {
     width: 100%;
     padding-left: 0;
+    transition: none;
 }
 
 /* Media Queries */
@@ -244,6 +256,11 @@
     .block.product-list-page .search__product-sort {
         display: flex;
         justify-content: flex-end;
+    }
+
+    .block.product-list-page .search__product-sort.plp-skeleton-shimmer {
+        width: 261px;
+        height: 32px;
     }
 
     /* Mobile filter trigger — hidden on desktop */
@@ -267,14 +284,17 @@
     grid-column: 1 / -1;
 }
 
-.product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid {
+.product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid,
+.plp-skeleton-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px 15px;
+    display: grid;
 }
 
 
 @media (min-width: 640px) {
-    .product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid {
+    .product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid,
+    .plp-skeleton-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 25px 20px;
     }
@@ -584,7 +604,8 @@
 }
 
 @media (min-width: 1024px) {
-    .product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid {
+    .product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid,
+    .plp-skeleton-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
     }
@@ -601,7 +622,8 @@
 }
 
 @media (min-width: 1440px) {
-    .product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid {
+    .product-list-page-wrapper .product-discovery-product-list .product-discovery-product-list__grid,
+    .plp-skeleton-grid {
         gap: 30px;
     }
 }
@@ -1190,4 +1212,51 @@
 .recomended.product-slider-container .product-slider-header {
     padding: 0;
     margin: 0 0 15px;
+}
+
+/* Shimmer Animation & Base Skeleton Styles */
+@keyframes plp-shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.plp-skeleton-shimmer {
+    background: #f0f0f0 linear-gradient(90deg, #f0f0f0 0, #f8f8f8 40px, #f0f0f0 80px) no-repeat;
+    background-size: 200px 100%;
+    animation: plp-shimmer 1.5s infinite ease-in-out;
+    border-radius: 4px;
+}
+
+/* Skeleton Layout Structures */
+.plp-skeleton-breadcrumbs {
+    width: 220px;
+    height: 16px;
+    margin-bottom: 12px;
+}
+
+.plp-skeleton-title {
+    width: 300px;
+    height: 32px;
+    margin-bottom: 20px;
+}
+
+.plp-skeleton-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.plp-skeleton-sidebar-item {
+    width: 100%;
+    height: 48px;
+}
+
+.plp-skeleton-card {
+    height: 340px;
+    border-radius: 8px;
 }
