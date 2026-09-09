@@ -12,6 +12,21 @@ export default function decorate(block) {
     });
     ul.append(li);
   });
-  ul.querySelectorAll('picture > img').forEach((img) => img.closest('picture').replaceWith(createOptimizedPicture(img.src, img.alt, false, [{ width: '750' }])));
+
+  ul.querySelectorAll('picture > img').forEach((img) => {
+    const width = img.getAttribute('width');
+    const height = img.getAttribute('height');
+
+    const optimizedPic = createOptimizedPicture(img.src, img.alt, false, [{ width: '750' }]);
+    const optimizedImg = optimizedPic.querySelector('img');
+
+    if (optimizedImg) {
+      if (width) optimizedImg.setAttribute('width', width);
+      if (height) optimizedImg.setAttribute('height', height);
+    }
+
+    img.closest('picture').replaceWith(optimizedPic);
+  });
+
   block.replaceChildren(ul);
 }

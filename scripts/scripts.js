@@ -23,38 +23,10 @@ import {
   IS_DA,
 } from './commerce.js';
 
-/*
- * Trusted Types default policy.
- *
- * This policy is defined but NOT currently enforced: the
- * `require-trusted-types-for 'script'` CSP directive that activates it has been
- * removed from the Content-Security-Policy meta in head.html. The policy is kept
- * here so enforcement can be turned back on without re-authoring it.
- *
- * Why the directive was removed: with it enforced, payment SDKs that build a
- * same-origin iframe and synchronously inject a <script> into it fail to render.
- * The Credit Card checkout flow hits this because its hosted-fields SDK does
- * exactly that. Trusted Types policies are scoped per document/realm, so the
- * child iframe inherits the CSP directive but not this default policy; the SDK's
- * `script.src` assignment in that realm then throws "This document requires
- * 'TrustedScriptURL' assignment" and the card fields never mount. Any dependency
- * that injects scripts into a same-origin iframe realm hits the same wall.
- *
- * To re-enable enforcement: add `require-trusted-types-for 'script';` back to the
- * `Content-Security-Policy` meta in head.html. Before doing so, note that the
- * policy below is a passthrough (createScriptURL/createScript return their input
- * unchanged), so enforcing it satisfies the API without adding real containment;
- * hardening it into an allowlist is the useful next step. Enforcement will also
- * re-break any same-origin-iframe SDK unless that SDK installs its own policy in
- * the iframe realm (the correct long-term fix).
- *
- * References:
- * - Directive introduced upstream: https://github.com/adobe/aem-boilerplate/pull/641
- * - Trusted Types API: https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API
- */
-if (window.trustedTypes && window.trustedTypes.createPolicy) {
+/* Trusted Types Policy (Safely Initialized) */
+if (window.trustedTypes?.createPolicy) {
   const innerTT = window.trustedTypes.createPolicy('tt-inner', {
-    createHTML: (s) => s, // avoid stack overflow
+    createHTML: (s) => s,
   });
 
   window.trustedTypes.createPolicy('default', {
@@ -78,34 +50,43 @@ if (window.trustedTypes && window.trustedTypes.createPolicy) {
 }
 
 /**
- * load fonts.css and set a session storage flag
+ * Loads fonts asynchronously and flags session storage.
  */
 async function loadFonts() {
   await loadCSS(`${window.hlx.codeBasePath}/styles/fonts.css`);
   try {
-    if (!window.location.hostname.includes('localhost')) sessionStorage.setItem('fonts-loaded', 'true');
+    if (!window.location.hostname.includes('localhost')) {
+      sessionStorage.setItem('fonts-loaded', 'true');
+    }
   } catch (e) {
-    // do nothing
+    /* Ignore storage errors */
   }
 }
 
 /**
- * Turns `/widgets/...` links into widget blocks.
- * @param {Element} main The container element
+ * Prevents redundant home CSS injections.
+ */
+function loadHomeStyles() {
+  if (window.location.pathname === '/' && !document.querySelector('link[href*="home.css"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `${window.hlx.codeBasePath}/styles/home.css`;
+    document.head.appendChild(link);
+  }
+}
+
+/**
+ * Automatically builds widget blocks without extra loops.
  */
 function buildWidgetAutoBlocks(main) {
-  const widgetLinks = [...main.querySelectorAll('a[href*="/widgets/"]')];
+  const widgetLinks = main.querySelectorAll('a[href*="/widgets/"]');
   widgetLinks.forEach((link) => {
     if (link.closest('.widget')) return;
-    const newLink = link.cloneNode(true);
-    const widgetBlock = buildBlock('widget', { elems: [newLink] });
+    const widgetBlock = buildBlock('widget', { elems: [link.cloneNode(true)] });
     const p = link.closest('p');
-    if (
-      p
-      && p.querySelectorAll('a').length === 1
-      && p.querySelector('a') === link
-      && p.textContent.trim() === link.textContent.trim()
-    ) {
+    if (p && p.children.length === 1
+      && p.firstElementChild === link
+      && p.textContent.trim() === link.textContent.trim()) {
       p.replaceWith(widgetBlock);
     } else {
       link.replaceWith(widgetBlock);
@@ -114,27 +95,26 @@ function buildWidgetAutoBlocks(main) {
 }
 
 /**
- * Builds all synthetic blocks in a container element.
- * @param {Element} main The container element
+ * Parallelized fragment auto-loading to fix waterfall latency.
  */
-function buildAutoBlocks(main) {
+async function buildAutoBlocks(main) {
   try {
-    // auto load `*/fragments/*` references
     const fragments = [...main.querySelectorAll('a[href*="/fragments/"]')].filter((f) => !f.closest('.fragment'));
     if (fragments.length > 0) {
-      // eslint-disable-next-line import/no-cycle
-      import('../blocks/fragment/fragment.js').then(({ loadFragment }) => {
-        fragments.forEach(async (fragment) => {
+      const { loadFragment } = await import('../blocks/fragment/fragment.js');
+      await Promise.all(
+        fragments.map(async (fragment) => {
           try {
             const { pathname } = new URL(fragment.href);
             const frag = await loadFragment(pathname);
-            fragment.parentElement.replaceWith(...frag.children);
+            if (frag?.children) {
+              fragment.parentElement.replaceWith(...frag.children);
+            }
           } catch (error) {
-            // eslint-disable-next-line no-console
             console.error('Fragment loading failed', error);
           }
-        });
-      });
+        }),
+      );
     }
     buildWidgetAutoBlocks(main);
   } catch (error) {
@@ -143,34 +123,30 @@ function buildAutoBlocks(main) {
 }
 
 /**
- * Decorates formatted links to style them as buttons.
- * @param {HTMLElement} main The main container element
+ * Decorates action link buttons.
  */
 function decorateButtons(main) {
   main.querySelectorAll('p a[href]').forEach((a) => {
-    a.title = a.title || a.textContent;
+    a.title ||= a.textContent;
     const p = a.closest('p');
     const text = a.textContent.trim();
 
-    // quick structural checks
     if (a.querySelector('img') || p.textContent.trim() !== text) return;
 
-    // skip URL display links
     try {
       if (new URL(a.href).href === new URL(text, window.location).href) return;
     } catch { /* continue */ }
 
-    // require authored formatting for buttonization
     const strong = a.closest('strong');
     const em = a.closest('em');
     if (!strong && !em) return;
 
     p.className = 'button-wrapper';
     a.className = 'button';
-    if (strong && em) { // high-impact call-to-action
+
+    if (strong && em) {
       a.classList.add('accent');
-      const outer = strong.contains(em) ? strong : em;
-      outer.replaceWith(a);
+      (strong.contains(em) ? strong : em).replaceWith(a);
     } else if (strong) {
       a.classList.add('primary');
       strong.replaceWith(a);
@@ -181,10 +157,6 @@ function decorateButtons(main) {
   });
 }
 
-/**
- * Decorates the main element.
- * @param {Element} main The main element
- */
 export function decorateMain(main) {
   decorateLinks(main);
   decorateIcons(main);
@@ -198,23 +170,17 @@ function createGlobalBreadcrumbsContainer(doc = document) {
   const rootPath = getRootPath().replace(/\/$/, '') || '/';
   const pathname = window.location.pathname.replace(/\/$/, '') || '/';
 
-  // 1. Exit early if on the home page
   if (pathname === rootPath) return null;
 
   const header = doc.querySelector('header');
   if (!header) return null;
 
   const isPlpPage = pathname.startsWith('/categories/');
+  let container = doc.querySelector(isPlpPage ? '.category-banner-wrapper' : '.breadcrumbs-container');
 
-  // 2. Select existing container based on page type
-  let container = isPlpPage
-    ? doc.querySelector('.category-banner-wrapper')
-    : doc.querySelector('.breadcrumbs-container');
-
-  // 3. Only create and construct DOM elements if container doesn't exist yet
   if (!container) {
+    container = document.createElement('div');
     if (isPlpPage) {
-      container = document.createElement('div');
       container.className = 'category-banner-wrapper';
 
       const breadcrumbsEl = document.createElement('div');
@@ -223,24 +189,16 @@ function createGlobalBreadcrumbsContainer(doc = document) {
       const pageTitleEl = document.createElement('h1');
       pageTitleEl.className = 'page-title';
 
-      container.appendChild(breadcrumbsEl);
-      container.appendChild(pageTitleEl);
+      container.append(breadcrumbsEl, pageTitleEl);
     } else {
-      container = document.createElement('div');
       container.className = 'breadcrumbs-container';
     }
-
-    // Insert newly created container directly after header
     header.insertAdjacentElement('afterend', container);
   }
 
   return container;
 }
 
-/**
- * Loads everything needed to get to LCP.
- * @param {Element} doc The container element
- */
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
   decorateTemplateAndTheme();
@@ -256,75 +214,53 @@ async function loadEager(doc) {
     } catch (e) {
       console.error('Error initializing commerce configuration:', e);
       loadErrorPage(418);
+      return;
     }
     document.body.classList.add('appear');
     await loadSection(main.querySelector('.section'), waitForFirstImage);
   }
 
   try {
-    /* if desktop (proxy for fast connection) or fonts already loaded, load fonts.css */
     if (window.innerWidth >= 900 || sessionStorage.getItem('fonts-loaded')) {
       loadFonts();
-      if (window.location.pathname === '/') {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = '/styles/home.css';
-        document.head.appendChild(link);
-      }
+      loadHomeStyles();
     }
-  } catch (e) {
-    // do nothing
-  }
+  } catch (e) { /* ignore failure */ }
 }
 
-/**
- * Loads everything that doesn't need to be delayed.
- * @param {Element} doc The container element
- */
 async function loadLazy(doc) {
-  loadHeader(doc.querySelector('header'));
-
   const main = doc.querySelector('main');
+
+  loadHeader(doc.querySelector('header'));
   await loadSections(main);
 
   const { hash } = window.location;
-  const element = hash ? doc.getElementById(hash.substring(1)) : false;
-  if (hash && element) element.scrollIntoView();
+  if (hash) {
+    const element = doc.getElementById(hash.substring(1));
+    if (element) element.scrollIntoView();
+  }
 
   loadFooter(doc.querySelector('footer'));
-
   loadCommerceLazy();
 
   loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   loadFonts();
-
-  if (window.location.pathname === '/') {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = '/styles/home.css';
-    document.head.appendChild(link);
-  }
+  loadHomeStyles();
 }
 
-/**
- * Loads everything that happens a lot later,
- * without impacting the user experience.
- */
 function loadDelayed() {
   window.setTimeout(() => import('./delayed.js'), 3000);
-  // load anything that can be postponed to the latest here
 }
 
 async function loadPage() {
   const { pathname, search } = window.location;
 
-  // If we are on a natural category path that is not default, redirect to default template
+  // Immediate redirect before loading DOM/Eager cycles
   if (pathname.startsWith('/categories/') && pathname !== '/categories/default') {
     window.location.replace(`/categories/default?cp=${encodeURIComponent(pathname)}`);
     return;
   }
 
-  // If we are on the default template with a cp parameter, clean the URL visually
   if (pathname === '/categories/default' && search.includes('cp=')) {
     const urlParams = new URLSearchParams(search);
     const cp = urlParams.get('cp');
@@ -338,16 +274,13 @@ async function loadPage() {
   loadDelayed();
 }
 
-// UE Editor support before page load
 if (IS_UE) {
-  // eslint-disable-next-line import/no-unresolved
   await import(`${window.hlx.codeBasePath}/scripts/ue.js`).then(({ default: ue }) => ue());
 }
 
 loadPage();
 
-(async function loadDa() {
-  if (!IS_DA) return;
+if (IS_DA) {
   // eslint-disable-next-line import/no-unresolved
   import('https://da.live/scripts/dapreview.js').then(({ default: daPreview }) => daPreview(loadPage));
-}());
+}
