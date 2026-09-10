@@ -248,8 +248,23 @@ export default async function decorate(block) {
 
   const searchPanel = navTools.querySelector('.nav-search-panel');
   const searchButton = navTools.querySelector('.nav-search-button');
+  const searchWrapper = navTools.querySelector('.search-wrapper');
   const searchForm = searchPanel.querySelector('#search-bar-form');
   const searchResult = searchPanel.querySelector('.search-bar-result');
+  let miniSearchOpen = false;
+
+  function closeMiniSearch() {
+    miniSearchOpen = false;
+    searchResult.style.display = 'none';
+  }
+
+  function openMiniSearch() {
+    miniSearchOpen = true;
+  }
+
+  function syncMiniSearchResults(results = []) {
+    searchResult.style.display = miniSearchOpen && results.length > 0 ? 'block' : 'none';
+  }
 
   async function toggleSearch(state) {
     const pageSize = 4;
@@ -277,7 +292,7 @@ export default async function decorate(block) {
           scope: 'popover',
           routeProduct: ({ urlKey, sku }) => getProductLink(urlKey, sku),
           onSearchResult: (results) => {
-            searchResult.style.display = results.length > 0 ? 'block' : 'none';
+            syncMiniSearchResults(results);
           },
           slots: {
             ProductImage: (ctx) => {
@@ -352,12 +367,16 @@ export default async function decorate(block) {
           name: 'search',
           placeholder: labels.Global?.Search,
           onValue: (phrase) => {
+            openMiniSearch();
+
             if (!phrase) {
               search(null, { scope: 'popover' });
+              syncMiniSearchResults();
               return;
             }
 
             if (phrase.length < 3) {
+              syncMiniSearchResults();
               return;
             }
 
@@ -423,8 +442,21 @@ export default async function decorate(block) {
       toggleMiniCart(false);
     }
 
-    if (!searchPanel.contains(e.target) && !searchButton.contains(e.target)) {
-      toggleSearch(false);
+    if (!searchWrapper.contains(e.target)) {
+      closeMiniSearch();
+    }
+  });
+
+  searchWrapper.addEventListener('focusin', () => {
+    openMiniSearch();
+    if (searchResult.querySelector('.dropin-product-item-card, .product-discovery-product-item')) {
+      searchResult.style.display = 'block';
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape') {
+      closeMiniSearch();
     }
   });
 
